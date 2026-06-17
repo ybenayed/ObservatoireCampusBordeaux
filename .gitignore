@@ -1,0 +1,10 @@
+# Android Studio
+.gradle/
+local.properties
+
+# Build
+build/
+target/
+
+# Logs
+*.log
