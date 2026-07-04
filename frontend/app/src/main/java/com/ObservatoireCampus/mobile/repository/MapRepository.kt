@@ -3,9 +3,9 @@ package com.ObservatoireCampus.mobile.repository
 import android.content.Context
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import com.ObservatoireCampus.mobile.model.CampusDto
 import com.ObservatoireCampus.mobile.network.RetrofitClient
 import java.io.File
+import com.ObservatoireCampus.mobile.model.CampusDto
 
 class MapRepository(private val context: Context) {
 
@@ -14,7 +14,7 @@ class MapRepository(private val context: Context) {
 
     suspend fun getCampus(): List<CampusDto> {
         return try {
-            val data = RetrofitClient.api.getAllCampus()
+            val data = RetrofitClient.campusApi.getAllCampus()
             saveToCache(data)
             data
         } catch (e: Exception) {

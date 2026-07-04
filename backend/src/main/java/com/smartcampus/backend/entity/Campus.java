@@ -18,6 +18,7 @@ public class Campus {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "nom", nullable = false)
     private String name;
     private String city;
 
@@ -26,7 +27,6 @@ public class Campus {
 
     private Double perimeterMeters;
 
-    // ⚠️ IMPORTANT : PostGIS geometry column
     @Column(columnDefinition = "geometry(Polygon,4326)")
     private Polygon polygon;
 

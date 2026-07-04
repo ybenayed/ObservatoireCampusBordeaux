@@ -1,154 +1,115 @@
 package com.ObservatoireCampus.mobile.ui.screens
 
-import android.annotation.SuppressLint
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.ObservatoireCampus.mobile.model.CampusDto
+import com.ObservatoireCampus.mobile.repository.ParkingRepository
+import com.ObservatoireCampus.mobile.ui.components.CampusButton
+import com.ObservatoireCampus.mobile.ui.components.CampusMap
+import com.ObservatoireCampus.mobile.ui.components.DrawerMenu
+import com.ObservatoireCampus.mobile.ui.components.ErrorBanner
+import com.ObservatoireCampus.mobile.ui.components.SearchBar
+import com.ObservatoireCampus.mobile.ui.components.TopBar
+import com.ObservatoireCampus.mobile.ui.components.ZoomControls
+import com.ObservatoireCampus.mobile.ui.theme.ObcampusBackground
 import com.ObservatoireCampus.mobile.viewmodel.MapViewModel
-import org.osmdroid.config.Configuration
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
-import org.osmdroid.util.GeoPoint
+import com.ObservatoireCampus.mobile.viewmodel.parking.ParkingViewModel
+import com.ObservatoireCampus.mobile.viewmodel.parking.ParkingViewModelFactory
+import kotlinx.coroutines.launch
 import org.osmdroid.views.MapView
-import org.osmdroid.views.overlay.Polygon
 
-@SuppressLint("SetJavaScriptEnabled")
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MapScreen(viewModel: MapViewModel = viewModel()) {
     val campusList by viewModel.campusList.collectAsState()
-    val error by viewModel.error.collectAsState()
-    val mapViewRef = remember { mutableStateOf<MapView?>(null) }
-    var showPolygons by remember { mutableStateOf(false) }
+    val campusError by viewModel.error.collectAsState()
 
-    LaunchedEffect(campusList, showPolygons) {
-        val mapView = mapViewRef.value ?: return@LaunchedEffect
-        mapView.overlays.clear()
-        if (showPolygons && campusList.isNotEmpty()) {
-            drawCampusPolygons(mapView, campusList)
-        }
-        mapView.invalidate()
+    val parkingViewModel: ParkingViewModel = viewModel(
+        factory = ParkingViewModelFactory(ParkingRepository())
+    )
+    val parkingLayers by parkingViewModel.parkingLayers.collectAsState()
+    val visibleParking by parkingViewModel.visiblePositions.collectAsState()
+    val parkingError by parkingViewModel.error.collectAsState()
+    var parkingExpanded by remember { mutableStateOf(false) }
+
+    // Une seule zone d'erreur pour tout l'ecran : on combine les sources
+    val combinedError = listOfNotNull(campusError, parkingError)
+        .takeIf { it.isNotEmpty() }
+        ?.joinToString(" | ")
+
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+    var mapView by remember { mutableStateOf<MapView?>(null) }
+    var showCampus by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        if (campusList.isEmpty()) viewModel.loadCampus()
+        parkingViewModel.loadParking()
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-
-        AndroidView(
-            modifier = Modifier.fillMaxSize(),
-            factory = { context ->
-                Configuration.getInstance().userAgentValue = context.packageName
-                val mapView = MapView(context)
-                mapView.setTileSource(TileSourceFactory.MAPNIK)
-                mapView.setMultiTouchControls(true)
-                mapView.controller.setZoom(15.0)
-                mapView.controller.setCenter(GeoPoint(44.8067, -0.6050))
-                mapViewRef.value = mapView
-                mapView
-            }
-        )
-
-        // Affiche l'erreur en rouge si présente
-        error?.let {
-            Surface(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(16.dp),
-                color = Color.Red.copy(alpha = 0.9f),
-                shape = MaterialTheme.shapes.medium
-            ) {
-                Text(
-                    text = "Erreur : $it",
-                    color = Color.White,
-                    modifier = Modifier.padding(12.dp)
-                )
-            }
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            DrawerMenu(
+                parkingLayers = parkingLayers,
+                parkingMasterActive = parkingViewModel.masterActive,
+                parkingExpanded = parkingExpanded,
+                onParkingExpandToggle = { parkingExpanded = !parkingExpanded },
+                onParkingMasterToggle = { parkingViewModel.toggleMaster() },
+                onParkingItemToggle = { key -> parkingViewModel.toggleType(key) },
+                onBackToMap = { scope.launch { drawerState.close() } }
+            )
         }
-
-        // Info campus chargés
-        if (campusList.isNotEmpty()) {
-            Surface(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(16.dp),
-                color = Color(0xFF1E88E5).copy(alpha = 0.9f),
-                shape = MaterialTheme.shapes.medium
-            ) {
-                Text(
-                    text = "${campusList.size} campus chargés",
-                    color = Color.White,
-                    modifier = Modifier.padding(12.dp)
-                )
-            }
-        }
-
-        Button(
-            onClick = {
-                if (campusList.isEmpty()) {
-                    viewModel.loadCampus() // réessaie si vide
-                } else {
-                    showPolygons = !showPolygons
-                }
-            },
+    ) {
+        Box(
             modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(24.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = if (showPolygons)
-                    MaterialTheme.colorScheme.error
-                else
-                    MaterialTheme.colorScheme.primary
-            )
+                .fillMaxSize()
+                .background(ObcampusBackground)
         ) {
-            Text(
-                when {
-                    campusList.isEmpty() && error != null -> "Réessayer"
-                    campusList.isEmpty() -> "Chargement..."
-                    showPolygons -> "Masquer les campus"
-                    else -> "Voir les campus (${campusList.size})"
-                }
+            CampusMap(
+                campusList = campusList,
+                showPolygons = showCampus,
+                parkingList = visibleParking,
+                onMapReady = { mapView = it },
+                modifier = Modifier.fillMaxSize()
+            )
+            TopBar(onMenuClick = { scope.launch { drawerState.open() } })
+            SearchBar(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 64.dp)
+            )
+            CampusButton(
+                onClick = { showCampus = !showCampus },
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 6.dp, end = 10.dp)
+            )
+            ZoomControls(
+                onZoomIn = { mapView?.controller?.zoomIn() },
+                onZoomOut = { mapView?.controller?.zoomOut() },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(bottom = 24.dp, end = 16.dp)
+            )
+
+            // Zone d'erreur UNIQUE pour tout l'ecran
+            ErrorBanner(
+                error = combinedError,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 116.dp, start = 16.dp, end = 16.dp)
             )
         }
-    }
-}
-
-private fun drawCampusPolygons(mapView: MapView, campusList: List<CampusDto>) {
-    val colors = listOf(
-        0x882563eb.toInt(),
-        0x8816a34a.toInt(),
-        0x88dc2626.toInt()
-    )
-    val strokeColors = listOf(
-        0xFF2563eb.toInt(),
-        0xFF16a34a.toInt(),
-        0xFFdc2626.toInt()
-    )
-
-    campusList.forEachIndexed { index, campus ->
-        if (campus.polygonCoordinates.isEmpty()) return@forEachIndexed
-
-        val geoPoints = campus.polygonCoordinates.map { coord ->
-            GeoPoint(coord[1], coord[0])
-        }
-
-        val polygon = Polygon(mapView).apply {
-            points = geoPoints
-            fillPaint.color = colors[index % colors.size]
-            outlinePaint.color = strokeColors[index % strokeColors.size]
-            outlinePaint.strokeWidth = 3f
-            title = campus.name
-            setOnClickListener { _, _, _ ->
-                showInfoWindow()
-                true
-            }
-        }
-        mapView.overlays.add(polygon)
-    }
-
-    campusList.firstOrNull()?.let {
-        mapView.controller.animateTo(GeoPoint(it.centerLat, it.centerLng))
     }
 }

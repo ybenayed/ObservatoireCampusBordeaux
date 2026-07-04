@@ -4,8 +4,8 @@ import android.app.Application
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.ObservatoireCampus.mobile.model.CampusDto
 import com.ObservatoireCampus.mobile.repository.MapRepository
+import com.ObservatoireCampus.mobile.model.CampusDto
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch

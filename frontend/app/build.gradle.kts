@@ -33,6 +33,7 @@ android {
 dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.camera.camera2.pipe)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
@@ -64,5 +65,9 @@ dependencies {
 
     // Coroutines
     implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+
+
+    implementation("androidx.compose.material:material-icons-extended:1.6.7")
+    implementation("androidx.webkit:webkit:1.10.0")
 
 }
