@@ -14,6 +14,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ObservatoireCampus.mobile.repository.ParkingRepository
+import com.ObservatoireCampus.mobile.repository.station.StationTBRepository
+import com.ObservatoireCampus.mobile.repository.station.StationVRepository
 import com.ObservatoireCampus.mobile.ui.components.CampusButton
 import com.ObservatoireCampus.mobile.ui.components.CampusMap
 import com.ObservatoireCampus.mobile.ui.components.DrawerMenu
@@ -21,10 +23,16 @@ import com.ObservatoireCampus.mobile.ui.components.ErrorBanner
 import com.ObservatoireCampus.mobile.ui.components.SearchBar
 import com.ObservatoireCampus.mobile.ui.components.TopBar
 import com.ObservatoireCampus.mobile.ui.components.ZoomControls
+import com.ObservatoireCampus.mobile.ui.components.station.StationTBBubble
+import com.ObservatoireCampus.mobile.ui.components.station.StationVBubble
 import com.ObservatoireCampus.mobile.ui.theme.ObcampusBackground
 import com.ObservatoireCampus.mobile.viewmodel.MapViewModel
 import com.ObservatoireCampus.mobile.viewmodel.parking.ParkingViewModel
 import com.ObservatoireCampus.mobile.viewmodel.parking.ParkingViewModelFactory
+import com.ObservatoireCampus.mobile.viewmodel.station.StationTBViewModel
+import com.ObservatoireCampus.mobile.viewmodel.station.StationTBViewModelFactory
+import com.ObservatoireCampus.mobile.viewmodel.station.StationVViewModel
+import com.ObservatoireCampus.mobile.viewmodel.station.StationVViewModelFactory
 import kotlinx.coroutines.launch
 import org.osmdroid.views.MapView
 
@@ -42,8 +50,31 @@ fun MapScreen(viewModel: MapViewModel = viewModel()) {
     val parkingError by parkingViewModel.error.collectAsState()
     var parkingExpanded by remember { mutableStateOf(false) }
 
+    // ─── Bus / Tram
+    val stationTBViewModel: StationTBViewModel = viewModel(
+        factory = StationTBViewModelFactory(StationTBRepository())
+    )
+    val stationTBLayers by stationTBViewModel.layers.collectAsState()
+    val visibleStationsTB by stationTBViewModel.visiblePositions.collectAsState()
+    val selectedStationTB by stationTBViewModel.selectedStation.collectAsState()
+    val passagesTB by stationTBViewModel.passages.collectAsState()
+    val bubbleLoadingTB by stationTBViewModel.bubbleLoading.collectAsState()
+    val stationTBError by stationTBViewModel.error.collectAsState()
+    var stationTBExpanded by remember { mutableStateOf(false) }
+
+    // ─── Velo
+    val stationVViewModel: StationVViewModel = viewModel(
+        factory = StationVViewModelFactory(StationVRepository())
+    )
+    val stationVLayers by stationVViewModel.layers.collectAsState()
+    val visibleStationsV by stationVViewModel.visiblePositions.collectAsState()
+    val selectedStationVDetail by stationVViewModel.selectedDetail.collectAsState()
+    val bubbleLoadingV by stationVViewModel.bubbleLoading.collectAsState()
+    val stationVError by stationVViewModel.error.collectAsState()
+    var stationVExpanded by remember { mutableStateOf(false) }
+
     // Une seule zone d'erreur pour tout l'ecran : on combine les sources
-    val combinedError = listOfNotNull(campusError, parkingError)
+    val combinedError = listOfNotNull(campusError, parkingError, stationTBError, stationVError)
         .takeIf { it.isNotEmpty() }
         ?.joinToString(" | ")
 
@@ -55,6 +86,8 @@ fun MapScreen(viewModel: MapViewModel = viewModel()) {
     LaunchedEffect(Unit) {
         if (campusList.isEmpty()) viewModel.loadCampus()
         parkingViewModel.loadParking()
+        stationTBViewModel.loadStations()
+        stationVViewModel.loadStations()
     }
 
     ModalNavigationDrawer(
@@ -67,6 +100,18 @@ fun MapScreen(viewModel: MapViewModel = viewModel()) {
                 onParkingExpandToggle = { parkingExpanded = !parkingExpanded },
                 onParkingMasterToggle = { parkingViewModel.toggleMaster() },
                 onParkingItemToggle = { key -> parkingViewModel.toggleType(key) },
+                stationTBLayers = stationTBLayers,
+                stationTBMasterActive = stationTBViewModel.masterActive,
+                stationTBExpanded = stationTBExpanded,
+                onStationTBExpandToggle = { stationTBExpanded = !stationTBExpanded },
+                onStationTBMasterToggle = { stationTBViewModel.toggleMaster() },
+                onStationTBItemToggle = { key -> stationTBViewModel.toggleType(key) },
+                stationVLayers = stationVLayers,
+                stationVMasterActive = stationVViewModel.masterActive,
+                stationVExpanded = stationVExpanded,
+                onStationVExpandToggle = { stationVExpanded = !stationVExpanded },
+                onStationVMasterToggle = { stationVViewModel.toggleMaster() },
+                onStationVItemToggle = { key -> stationVViewModel.toggleType(key) },
                 onBackToMap = { scope.launch { drawerState.close() } }
             )
         }
@@ -80,6 +125,10 @@ fun MapScreen(viewModel: MapViewModel = viewModel()) {
                 campusList = campusList,
                 showPolygons = showCampus,
                 parkingList = visibleParking,
+                stationTBList = visibleStationsTB,
+                onStationTBClick = { stationTBViewModel.onStationClicked(it) },
+                stationVList = visibleStationsV,
+                onStationVClick = { stationVViewModel.onStationClicked(it) },
                 onMapReady = { mapView = it },
                 modifier = Modifier.fillMaxSize()
             )
@@ -110,6 +159,32 @@ fun MapScreen(viewModel: MapViewModel = viewModel()) {
                     .align(Alignment.TopCenter)
                     .padding(top = 116.dp, start = 16.dp, end = 16.dp)
             )
+
+            // ─── Bulles d'info (une seule visible a la fois, priorite TB puis Velo)
+            selectedStationTB?.let { station ->
+                StationTBBubble(
+                    station = station,
+                    passages = passagesTB,
+                    loading = bubbleLoadingTB,
+                    onClose = { stationTBViewModel.closeBubble() },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 32.dp, start = 16.dp, end = 16.dp)
+                )
+            }
+
+            if (selectedStationTB == null) {
+                selectedStationVDetail?.let {
+                    StationVBubble(
+                        detail = selectedStationVDetail,
+                        loading = bubbleLoadingV,
+                        onClose = { stationVViewModel.closeBubble() },
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 32.dp, start = 16.dp, end = 16.dp)
+                    )
+                }
+            }
         }
     }
 }

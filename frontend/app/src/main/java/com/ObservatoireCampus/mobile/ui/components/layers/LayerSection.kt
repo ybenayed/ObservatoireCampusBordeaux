@@ -42,7 +42,10 @@ fun LayerSection(
     expanded: Boolean,
     onExpandToggle: () -> Unit,
     onMasterToggle: () -> Unit,
-    onItemToggle: (String) -> Unit
+    onItemToggle: (String) -> Unit,
+    itemColor: (String) -> Color = { ParkingTypeStyle.color(it) },
+    itemIcon: (String) -> ImageVector = { ParkingTypeStyle.icon(it) },
+    itemLabel: (String) -> String = { ParkingTypeStyle.label(it) }
 ) {
     val chevronRotation by animateFloatAsState(if (expanded) 180f else 0f, label = "chevron")
 
@@ -109,7 +112,13 @@ fun LayerSection(
             ) {
                 Column(modifier = Modifier.padding(bottom = 8.dp)) {
                     items.forEach { item ->
-                        LayerSubItemRow(item = item, onToggle = { onItemToggle(item.key) })
+                        LayerSubItemRow(
+                            item = item,
+                            color = itemColor(item.key),
+                            icon = itemIcon(item.key),
+                            label = itemLabel(item.key),
+                            onToggle = { onItemToggle(item.key) }
+                        )
                     }
                 }
             }
@@ -118,11 +127,13 @@ fun LayerSection(
 }
 
 @Composable
-private fun LayerSubItemRow(item: LayerItemUiState, onToggle: () -> Unit) {
-    val color = ParkingTypeStyle.color(item.key)
-    val icon = ParkingTypeStyle.icon(item.key)
-    val label = ParkingTypeStyle.label(item.key)
-
+private fun LayerSubItemRow(
+    item: LayerItemUiState,
+    color: Color,
+    icon: ImageVector,
+    label: String,
+    onToggle: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()

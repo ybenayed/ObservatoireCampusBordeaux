@@ -10,6 +10,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import com.ObservatoireCampus.mobile.model.CampusDto
 import com.ObservatoireCampus.mobile.model.parking.ParkingPositionDto
+import com.ObservatoireCampus.mobile.model.station.StationTBPositionDto
+import com.ObservatoireCampus.mobile.model.station.StationVPositionDto
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
@@ -23,10 +25,12 @@ import android.graphics.Paint
 import android.graphics.drawable.BitmapDrawable
 import androidx.compose.ui.graphics.toArgb
 import com.ObservatoireCampus.mobile.ui.components.layers.parking.ParkingTypeStyle
+import com.ObservatoireCampus.mobile.ui.components.layers.station.StationTypeStyle
 
 /**
  * Carte OpenStreetMap. Dessine les polygones des campus recus,
- * et les marqueurs de parking (filtres par layers actifs, passes deja filtres par MapScreen).
+ * les marqueurs de parking, bus/tram et velo (filtres par layers actifs,
+ * passes deja filtres par MapScreen).
  * onMapReady renvoie l'instance MapView au parent (MapScreen) pour
  * pouvoir piloter le zoom et les deplacements depuis l'exterieur.
  */
@@ -36,18 +40,24 @@ fun CampusMap(
     campusList: List<CampusDto>,
     showPolygons: Boolean,
     parkingList: List<ParkingPositionDto> = emptyList(),
+    stationTBList: List<StationTBPositionDto> = emptyList(),
+    onStationTBClick: (StationTBPositionDto) -> Unit = {},
+    stationVList: List<StationVPositionDto> = emptyList(),
+    onStationVClick: (StationVPositionDto) -> Unit = {},
     onMapReady: (MapView) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val mapViewRef = remember { mutableStateOf<MapView?>(null) }
 
-    LaunchedEffect(campusList, showPolygons, parkingList) {
+    LaunchedEffect(campusList, showPolygons, parkingList, stationTBList, stationVList) {
         val mapView = mapViewRef.value ?: return@LaunchedEffect
         mapView.overlays.clear()
         if (showPolygons && campusList.isNotEmpty()) {
             drawCampusPolygons(mapView, campusList)
         }
         drawParkingMarkers(mapView, parkingList)
+        drawStationTBMarkers(mapView, stationTBList, onStationTBClick)
+        drawStationVMarkers(mapView, stationVList, onStationVClick)
         mapView.invalidate()
     }
 
@@ -110,7 +120,7 @@ private fun drawParkingMarkers(mapView: MapView, parkingList: List<ParkingPositi
             title = parking.nom
             snippet = ParkingTypeStyle.label(parking.taType)
             setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
-            icon = createParkingMarkerIcon(
+            icon = createMarkerIcon(
                 context = context,
                 colorArgb = ParkingTypeStyle.color(parking.taType).toArgb(),
                 letter = ParkingTypeStyle.markerLetter(parking.taType)
@@ -121,7 +131,57 @@ private fun drawParkingMarkers(mapView: MapView, parkingList: List<ParkingPositi
     }
 }
 
-private fun createParkingMarkerIcon(
+// Marqueurs Bus/Tram - clic declenche la bulle custom (pas la popup osmdroid par defaut)
+private fun drawStationTBMarkers(
+    mapView: MapView,
+    stations: List<StationTBPositionDto>,
+    onClick: (StationTBPositionDto) -> Unit
+) {
+    val context = mapView.context
+
+    stations.forEach { station ->
+        val marker = Marker(mapView).apply {
+            position = GeoPoint(station.latitude, station.longitude)
+            title = station.nom
+            snippet = StationTypeStyle.label(station.mode)
+            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
+            icon = createMarkerIcon(
+                context = context,
+                colorArgb = StationTypeStyle.color(station.mode).toArgb(),
+                letter = StationTypeStyle.markerLetter(station.mode)
+            )
+            setOnMarkerClickListener { _, _ -> onClick(station); true }
+        }
+        mapView.overlays.add(marker)
+    }
+}
+
+// Marqueurs Velo - clic declenche la bulle custom (statique + dynamique jointe)
+private fun drawStationVMarkers(
+    mapView: MapView,
+    stations: List<StationVPositionDto>,
+    onClick: (StationVPositionDto) -> Unit
+) {
+    val context = mapView.context
+
+    stations.forEach { station ->
+        val marker = Marker(mapView).apply {
+            position = GeoPoint(station.latitude, station.longitude)
+            title = station.nom
+            snippet = StationTypeStyle.label("VELO")
+            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
+            icon = createMarkerIcon(
+                context = context,
+                colorArgb = StationTypeStyle.color("VELO").toArgb(),
+                letter = StationTypeStyle.markerLetter("VELO")
+            )
+            setOnMarkerClickListener { _, _ -> onClick(station); true }
+        }
+        mapView.overlays.add(marker)
+    }
+}
+
+private fun createMarkerIcon(
     context: Context,
     colorArgb: Int,
     letter: String,

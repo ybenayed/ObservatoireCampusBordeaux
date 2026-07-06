@@ -15,6 +15,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.ObservatoireCampus.mobile.model.layers.LayerItemUiState
 import com.ObservatoireCampus.mobile.ui.components.layers.parking.ParkingDrawerSection
+import com.ObservatoireCampus.mobile.ui.components.layers.station.StationTBDrawerSection
+import com.ObservatoireCampus.mobile.ui.components.layers.station.StationVDrawerSection
 import com.ObservatoireCampus.mobile.ui.theme.ObcampusPrimary
 import com.ObservatoireCampus.mobile.ui.theme.ObcampusSecondary
 
@@ -23,14 +25,11 @@ private data class DrawerOption(
     val icon: ImageVector
 )
 
-// "Parking" retire d'ici - gere maintenant par ParkingDrawerSection (dynamique)
+// "Parking", "Velo", "Bus", "Tram" retires d'ici - geres maintenant par leurs sections dynamiques
 private val drawerOptions = listOf(
-    DrawerOption("Vélo", Icons.Default.DirectionsBike),
     DrawerOption("Trottinette", Icons.Default.ElectricScooter),
-    DrawerOption("Bus", Icons.Default.DirectionsBus),
-    DrawerOption("Tram", Icons.Default.Tram),
-    DrawerOption("Bornes électriques", Icons.Default.EvStation),
-    DrawerOption("Météo", Icons.Default.Cloud)
+    DrawerOption("Bornes electriques", Icons.Default.EvStation),
+    DrawerOption("Meteo", Icons.Default.Cloud)
 )
 
 @Composable
@@ -41,6 +40,18 @@ fun DrawerMenu(
     onParkingExpandToggle: () -> Unit,
     onParkingMasterToggle: () -> Unit,
     onParkingItemToggle: (String) -> Unit,
+    stationTBLayers: List<LayerItemUiState>,
+    stationTBMasterActive: Boolean,
+    stationTBExpanded: Boolean,
+    onStationTBExpandToggle: () -> Unit,
+    onStationTBMasterToggle: () -> Unit,
+    onStationTBItemToggle: (String) -> Unit,
+    stationVLayers: List<LayerItemUiState>,
+    stationVMasterActive: Boolean,
+    stationVExpanded: Boolean,
+    onStationVExpandToggle: () -> Unit,
+    onStationVMasterToggle: () -> Unit,
+    onStationVItemToggle: (String) -> Unit,
     onOptionClick: (String, Boolean) -> Unit = { _, _ -> },
     onBackToMap: () -> Unit = {},
     onLogout: () -> Unit = {}
@@ -85,6 +96,26 @@ fun DrawerMenu(
             onExpandToggle = onParkingExpandToggle,
             onMasterToggle = onParkingMasterToggle,
             onItemToggle = onParkingItemToggle
+        )
+
+        // BUS / TRAM - layer dynamique
+        StationTBDrawerSection(
+            items = stationTBLayers,
+            masterActive = stationTBMasterActive,
+            expanded = stationTBExpanded,
+            onExpandToggle = onStationTBExpandToggle,
+            onMasterToggle = onStationTBMasterToggle,
+            onItemToggle = onStationTBItemToggle
+        )
+
+        // VELO - layer dynamique
+        StationVDrawerSection(
+            items = stationVLayers,
+            masterActive = stationVMasterActive,
+            expanded = stationVExpanded,
+            onExpandToggle = onStationVExpandToggle,
+            onMasterToggle = onStationVMasterToggle,
+            onItemToggle = onStationVItemToggle
         )
 
         // AUTRES OPTIONS - toujours statiques pour l'instant
@@ -144,7 +175,7 @@ fun DrawerMenu(
         ) {
             Icon(Icons.Default.ExitToApp, contentDescription = "Logout", tint = Color.Red)
             Spacer(modifier = Modifier.width(12.dp))
-            Text(text = "Déconnexion", color = Color.Red)
+            Text(text = "Deconnexion", color = Color.Red)
             Spacer(modifier = Modifier.weight(1f))
             IconButton(onClick = onLogout) {
                 Icon(Icons.Default.ArrowForward, contentDescription = "logout")
