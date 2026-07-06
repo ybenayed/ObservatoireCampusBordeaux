@@ -26,16 +26,14 @@ public class FreeVehiclePositionCacheService {
     private static final String FREE_BIKE_STATUS_URL =
         "https://services.rideyego.com/gbfs/2-2/bordeaux/fr/free_bike_status";
 
-    // cache thread-safe, mis a jour toutes les 10s
+    // cache thread-safe, mis a jour toutes les 10s - SEULE source de verite desormais
     private final AtomicReference<List<JsonNode>> cache = new AtomicReference<>(Collections.emptyList());
 
-    // premier chargement au demarrage de l'appli (sinon cache vide pendant les 10 premieres secondes)
     @PostConstruct
     public void init() {
         refresh();
     }
 
-    // ─── REFRESH AUTOMATIQUE TOUTES LES 10 SECONDES
     @Scheduled(fixedRate = 10000)
     public void refresh() {
         try {
@@ -48,10 +46,9 @@ public class FreeVehiclePositionCacheService {
             }
 
             cache.set(vehicles);
-            log.info("Cache positions vehicules rafraichi : {} vehicules", vehicles.size());
+            log.info("Cache vehicules rafraichi : {} vehicules", vehicles.size());
         } catch (Exception e) {
-            log.error("Erreur refresh cache positions vehicules, ancien cache conserve", e);
-            // on ne vide pas le cache en cas d'erreur : on garde les dernieres donnees connues
+            log.error("Erreur refresh cache vehicules, ancien cache conserve", e);
         }
     }
 
@@ -73,6 +70,11 @@ public class FreeVehiclePositionCacheService {
                 .filter(v -> bikeId.equals(v.path("bike_id").asText(null)))
                 .findFirst()
                 .orElse(null);
+    }
+
+    // NOUVEAU : expose tout le cache brut, utilise par FreeVehicleInfoService
+    public List<JsonNode> getAllRawVehicles() {
+        return cache.get();
     }
 
     private FreeVehiclePositionDTO toPositionDTO(JsonNode v) {

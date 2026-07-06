@@ -33,8 +33,14 @@ import com.ObservatoireCampus.mobile.viewmodel.station.StationTBViewModel
 import com.ObservatoireCampus.mobile.viewmodel.station.StationTBViewModelFactory
 import com.ObservatoireCampus.mobile.viewmodel.station.StationVViewModel
 import com.ObservatoireCampus.mobile.viewmodel.station.StationVViewModelFactory
+import com.ObservatoireCampus.mobile.viewmodel.freevehicle.FreeVehicleViewModel
+import com.ObservatoireCampus.mobile.viewmodel.freevehicle.FreeVehicleViewModelFactory
+import com.ObservatoireCampus.mobile.repository.freevehicle.FreeVehicleRepository
+import com.ObservatoireCampus.mobile.ui.components.freevehicle.FreeVehicleBubble
 import kotlinx.coroutines.launch
 import org.osmdroid.views.MapView
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,9 +78,20 @@ fun MapScreen(viewModel: MapViewModel = viewModel()) {
     val bubbleLoadingV by stationVViewModel.bubbleLoading.collectAsState()
     val stationVError by stationVViewModel.error.collectAsState()
     var stationVExpanded by remember { mutableStateOf(false) }
+    // free vehicle
+    val freeVehicleViewModel: FreeVehicleViewModel = viewModel(
+        factory = FreeVehicleViewModelFactory(FreeVehicleRepository())
+    )
+    val freeVehicleLayers by freeVehicleViewModel.layers.collectAsState()
+    val visibleFreeVehicles by freeVehicleViewModel.visiblePositions.collectAsState()
+    val freeVehicleError by freeVehicleViewModel.error.collectAsState()
+    val selectedFreeVehicleId by freeVehicleViewModel.selectedVehicleId.collectAsState()
+    val selectedFreeVehicle by freeVehicleViewModel.selectedVehicle.collectAsState()
+    val bubbleLoadingFV by freeVehicleViewModel.bubbleLoading.collectAsState()
+    var freeVehicleExpanded by remember { mutableStateOf(false) }
 
     // Une seule zone d'erreur pour tout l'ecran : on combine les sources
-    val combinedError = listOfNotNull(campusError, parkingError, stationTBError, stationVError)
+    val combinedError = listOfNotNull(campusError, parkingError, stationTBError, stationVError, freeVehicleError)
         .takeIf { it.isNotEmpty() }
         ?.joinToString(" | ")
 
@@ -88,6 +105,7 @@ fun MapScreen(viewModel: MapViewModel = viewModel()) {
         parkingViewModel.loadParking()
         stationTBViewModel.loadStations()
         stationVViewModel.loadStations()
+        freeVehicleViewModel.loadStations()
     }
 
     ModalNavigationDrawer(
@@ -112,6 +130,12 @@ fun MapScreen(viewModel: MapViewModel = viewModel()) {
                 onStationVExpandToggle = { stationVExpanded = !stationVExpanded },
                 onStationVMasterToggle = { stationVViewModel.toggleMaster() },
                 onStationVItemToggle = { key -> stationVViewModel.toggleType(key) },
+                freeVehicleLayers = freeVehicleLayers,
+                freeVehicleMasterActive = freeVehicleViewModel.masterActive,
+                freeVehicleExpanded = freeVehicleExpanded,
+                onFreeVehicleExpandToggle = { freeVehicleExpanded = !freeVehicleExpanded },
+                onFreeVehicleMasterToggle = { freeVehicleViewModel.toggleMaster() },
+                onFreeVehicleItemToggle = { key -> freeVehicleViewModel.toggleType(key) },
                 onBackToMap = { scope.launch { drawerState.close() } }
             )
         }
@@ -129,6 +153,8 @@ fun MapScreen(viewModel: MapViewModel = viewModel()) {
                 onStationTBClick = { stationTBViewModel.onStationClicked(it) },
                 stationVList = visibleStationsV,
                 onStationVClick = { stationVViewModel.onStationClicked(it) },
+                freeVehicleList = visibleFreeVehicles,
+                onFreeVehicleClick = { freeVehicleViewModel.onVehicleClicked(it.bikeId) },
                 onMapReady = { mapView = it },
                 modifier = Modifier.fillMaxSize()
             )
@@ -184,6 +210,16 @@ fun MapScreen(viewModel: MapViewModel = viewModel()) {
                             .padding(bottom = 32.dp, start = 16.dp, end = 16.dp)
                     )
                 }
+            }
+            if (selectedStationTB == null && selectedStationVDetail == null && selectedFreeVehicleId != null) {
+                FreeVehicleBubble(
+                    detail = selectedFreeVehicle,
+                    loading = bubbleLoadingFV,
+                    onClose = { freeVehicleViewModel.closeBubble() },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 32.dp, start = 16.dp, end = 16.dp)
+                )
             }
         }
     }

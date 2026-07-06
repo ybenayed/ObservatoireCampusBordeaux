@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.ObservatoireCampus.mobile.model.layers.LayerItemUiState
+import com.ObservatoireCampus.mobile.ui.components.layers.freevehicle.FreeVehicleDrawerSection
 import com.ObservatoireCampus.mobile.ui.components.layers.parking.ParkingDrawerSection
 import com.ObservatoireCampus.mobile.ui.components.layers.station.StationTBDrawerSection
 import com.ObservatoireCampus.mobile.ui.components.layers.station.StationVDrawerSection
@@ -25,9 +26,8 @@ private data class DrawerOption(
     val icon: ImageVector
 )
 
-// "Parking", "Velo", "Bus", "Tram" retires d'ici - geres maintenant par leurs sections dynamiques
+// "Parking", "Velo", "Bus", "Tram", "Trottinette" retires d'ici - geres maintenant par leurs sections dynamiques
 private val drawerOptions = listOf(
-    DrawerOption("Trottinette", Icons.Default.ElectricScooter),
     DrawerOption("Bornes electriques", Icons.Default.EvStation),
     DrawerOption("Meteo", Icons.Default.Cloud)
 )
@@ -52,6 +52,13 @@ fun DrawerMenu(
     onStationVExpandToggle: () -> Unit,
     onStationVMasterToggle: () -> Unit,
     onStationVItemToggle: (String) -> Unit,
+    // ─── NOUVEAU : Libre-service (scooter/velo/trottinette electrique)
+    freeVehicleLayers: List<LayerItemUiState>,
+    freeVehicleMasterActive: Boolean,
+    freeVehicleExpanded: Boolean,
+    onFreeVehicleExpandToggle: () -> Unit,
+    onFreeVehicleMasterToggle: () -> Unit,
+    onFreeVehicleItemToggle: (String) -> Unit,
     onOptionClick: (String, Boolean) -> Unit = { _, _ -> },
     onBackToMap: () -> Unit = {},
     onLogout: () -> Unit = {}
@@ -108,7 +115,7 @@ fun DrawerMenu(
             onItemToggle = onStationTBItemToggle
         )
 
-        // VELO - layer dynamique
+        // VELO (stations statiques VCub) - layer dynamique
         StationVDrawerSection(
             items = stationVLayers,
             masterActive = stationVMasterActive,
@@ -116,6 +123,16 @@ fun DrawerMenu(
             onExpandToggle = onStationVExpandToggle,
             onMasterToggle = onStationVMasterToggle,
             onItemToggle = onStationVItemToggle
+        )
+
+        // LIBRE-SERVICE (scooter/velo/trottinette electrique, free-floating) - layer dynamique
+        FreeVehicleDrawerSection(
+            items = freeVehicleLayers,
+            masterActive = freeVehicleMasterActive,
+            expanded = freeVehicleExpanded,
+            onExpandToggle = onFreeVehicleExpandToggle,
+            onMasterToggle = onFreeVehicleMasterToggle,
+            onItemToggle = onFreeVehicleItemToggle
         )
 
         // AUTRES OPTIONS - toujours statiques pour l'instant

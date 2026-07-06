@@ -1,11 +1,9 @@
 package com.smartcampus.backend.controller.freevehicle;
 
 import com.smartcampus.backend.dto.freevehicle.FreeVehicleDTO;
-import com.smartcampus.backend.dto.freevehicle.FreeVehicleFVDTO;
 import com.smartcampus.backend.dto.freevehicle.FreeVehiclePositionDTO;
 import com.smartcampus.backend.dto.freevehicle.VehicleTypeCountDTO;
 import com.smartcampus.backend.dto.freevehicle.VehicleTypeFVDTO;
-import com.smartcampus.backend.service.freevehicle.FreeVehicleFVService;
 import com.smartcampus.backend.service.freevehicle.FreeVehicleInfoService;
 import com.smartcampus.backend.service.freevehicle.FreeVehiclePositionCacheService;
 import com.smartcampus.backend.service.freevehicle.VehicleTypeFVService;
@@ -24,13 +22,12 @@ import java.util.Map;
 @CrossOrigin(origins = "*")
 public class FreeVehicleController {
 
-    private final VehicleTypeFVService vehicleTypeFVService;         // STATIQUE (types)
-    private final FreeVehicleFVService freeVehicleFVService;         // STATIQUE (catalogue vehicules)
-    private final FreeVehicleInfoService freeVehicleInfoService;     // FUSION (statique + dynamique)
-    private final FreeVehiclePositionCacheService freeVehiclePositionCacheService; // Dynamique (positions live, cache 10s) 
+    private final VehicleTypeFVService vehicleTypeFVService;                     // catalogue TYPES (stable, import ponctuel)
+    private final FreeVehicleInfoService freeVehicleInfoService;                  // 100% dynamique (detail, liste, comptage)
+    private final FreeVehiclePositionCacheService freeVehiclePositionCacheService; // positions brutes (cache 10s)
 
 
-    // ─── GROUPE 1 - Import / Admin (statique)
+    // ─── Import des TYPES uniquement (catalogue stable : scooter/velo/trottinette, ne bouge presque jamais)
 
     @PostMapping("/import-types")
     public ResponseEntity<Map<String, Integer>> importVehicleTypes() {
@@ -38,13 +35,7 @@ public class FreeVehicleController {
         return ResponseEntity.ok(Map.of("imported", vehicleTypeFVService.importTypesFromApi()));
     }
 
-    @PostMapping("/import")
-    public ResponseEntity<Map<String, Integer>> importVehicles() {
-        log.info(">> Import catalogue vehicules libre-service depuis API RideYeGo");
-        return ResponseEntity.ok(Map.of("imported", freeVehicleFVService.importVehiclesFromApi()));
-    }
-
-    // ─── GROUPE 2 - API Front (lecture seule, statique)
+    // ─── API Front - 100% dynamique desormais
 
     @GetMapping("/types")
     public ResponseEntity<List<VehicleTypeFVDTO>> getAllTypes() {
@@ -52,20 +43,16 @@ public class FreeVehicleController {
     }
 
     @GetMapping
-    public ResponseEntity<List<FreeVehicleFVDTO>> getAllVehicles(
+    public ResponseEntity<List<FreeVehicleDTO>> getAllVehicles(
             @RequestParam(required = false) String type) {
         if (type != null) {
-            return ResponseEntity.ok(freeVehicleFVService.getVehiclesByType(type));
+            return ResponseEntity.ok(freeVehicleInfoService.getVehiclesByType(type));
         }
-        return ResponseEntity.ok(freeVehicleFVService.getAllVehicles());
+        return ResponseEntity.ok(freeVehicleInfoService.getAllVehicles());
     }
 
-    // ─── GROUPE 3 - Temps reel (dynamique, jamais persiste)
+    // ─── Temps reel (positions seules, format allege pour la carte)
 
-    /**
-     * GET /api/freeVehicle/positions              -> toutes les positions
-     * GET /api/freeVehicle/positions?type=xxx_id  -> positions filtrees par type
-     */
     @GetMapping("/positions")
     public ResponseEntity<List<FreeVehiclePositionDTO>> getPositions(
             @RequestParam(required = false) String type) {
@@ -75,24 +62,18 @@ public class FreeVehicleController {
         return ResponseEntity.ok(freeVehiclePositionCacheService.getAllPositions());
     }
 
+    // ─── Detail complet d'un vehicule - 100% dynamique, plus jamais de desync
 
-    // ─── GROUPE 4 - Fusion statique + dynamique
-
-    /**
-     * GET /api/freeVehicle/{bikeId} -> infos catalogue (BDD) + position live (API)
-     */
     @GetMapping("/{bikeId}")
     public ResponseEntity<FreeVehicleDTO> getVehicleInfo(@PathVariable String bikeId) {
         FreeVehicleDTO dto = freeVehicleInfoService.getVehicleInfo(bikeId);
         return dto != null ? ResponseEntity.ok(dto) : ResponseEntity.notFound().build();
     }
 
+    // ─── Comptage par type - calcule en direct depuis le cache
 
-    /**
-     * GET /api/freeVehicle/types/count -> chaque type + nombre de vehicules correspondant
-     */
     @GetMapping("/types/count")
     public ResponseEntity<List<VehicleTypeCountDTO>> getVehicleCountByType() {
-        return ResponseEntity.ok(vehicleTypeFVService.getVehicleCountByType());
+        return ResponseEntity.ok(freeVehicleInfoService.getVehicleCountByType());
     }
 }

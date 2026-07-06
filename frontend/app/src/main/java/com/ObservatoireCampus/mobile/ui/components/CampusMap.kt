@@ -26,7 +26,9 @@ import android.graphics.drawable.BitmapDrawable
 import androidx.compose.ui.graphics.toArgb
 import com.ObservatoireCampus.mobile.ui.components.layers.parking.ParkingTypeStyle
 import com.ObservatoireCampus.mobile.ui.components.layers.station.StationTypeStyle
-
+import com.ObservatoireCampus.mobile.model.freevehicle.FreeVehiclePositionDto
+import com.ObservatoireCampus.mobile.ui.components.layers.freevehicle.FreeVehicleTypeStyle
+import android.graphics.Path
 /**
  * Carte OpenStreetMap. Dessine les polygones des campus recus,
  * les marqueurs de parking, bus/tram et velo (filtres par layers actifs,
@@ -44,12 +46,14 @@ fun CampusMap(
     onStationTBClick: (StationTBPositionDto) -> Unit = {},
     stationVList: List<StationVPositionDto> = emptyList(),
     onStationVClick: (StationVPositionDto) -> Unit = {},
+    freeVehicleList: List<FreeVehiclePositionDto> = emptyList(),
+    onFreeVehicleClick: (FreeVehiclePositionDto) -> Unit = {},
     onMapReady: (MapView) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val mapViewRef = remember { mutableStateOf<MapView?>(null) }
 
-    LaunchedEffect(campusList, showPolygons, parkingList, stationTBList, stationVList) {
+    LaunchedEffect(campusList, showPolygons, parkingList, stationTBList, stationVList, freeVehicleList) {
         val mapView = mapViewRef.value ?: return@LaunchedEffect
         mapView.overlays.clear()
         if (showPolygons && campusList.isNotEmpty()) {
@@ -58,6 +62,7 @@ fun CampusMap(
         drawParkingMarkers(mapView, parkingList)
         drawStationTBMarkers(mapView, stationTBList, onStationTBClick)
         drawStationVMarkers(mapView, stationVList, onStationVClick)
+        drawFreeVehicleMarkers(mapView, freeVehicleList, onFreeVehicleClick)
         mapView.invalidate()
     }
 
@@ -215,6 +220,119 @@ private fun createMarkerIcon(
     }
     val textY = center - (textPaint.descent() + textPaint.ascent()) / 2f
     canvas.drawText(letter, center, textY, textPaint)
+
+    return BitmapDrawable(context.resources, bitmap)
+}
+
+// Marqueurs Libre-service (scooter/velo/trottinette) - pin + glyphe, pas de cercle simple
+private fun drawFreeVehicleMarkers(
+    mapView: MapView,
+    vehicles: List<FreeVehiclePositionDto>,
+    onClick: (FreeVehiclePositionDto) -> Unit
+) {
+    val context = mapView.context
+    vehicles.forEach { vehicle ->
+        val marker = Marker(mapView).apply {
+            position = GeoPoint(vehicle.latitude, vehicle.longitude)
+            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+            icon = createVehicleMarkerIcon(context, FreeVehicleTypeStyle.color(vehicle.vehicleTypeId).toArgb(), vehicle.vehicleTypeId)
+            setOnMarkerClickListener { _, _ -> onClick(vehicle); true } // plus de showInfoWindow
+        }
+        mapView.overlays.add(marker)
+    }
+}
+
+// Pin (goutte) avec pictogramme du vehicule dessine dedans - pas un simple cercle
+private fun createVehicleMarkerIcon(
+    context: Context,
+    colorArgb: Int,
+    vehicleTypeId: String,
+    sizeDp: Int = 36
+): BitmapDrawable {
+    val density = context.resources.displayMetrics.density
+    val sizePx = (sizeDp * density).toInt()
+    val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+    val w = sizePx.toFloat()
+
+    val pinPaint =
+        Paint(Paint.ANTI_ALIAS_FLAG).apply { color = colorArgb; style = Paint.Style.FILL }
+    val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.WHITE
+        style = Paint.Style.STROKE
+        strokeWidth = 2f * density
+    }
+
+    // Forme "goutte" (pin de carte classique) au lieu d'un rond plein
+    val cx = w / 2f
+    val cy = w * 0.36f
+    val r = w * 0.34f
+    val path = Path().apply {
+        addCircle(cx, cy, r, Path.Direction.CW)
+        moveTo(cx - r * 0.85f, cy + r * 0.55f)
+        lineTo(cx, w * 0.95f)
+        lineTo(cx + r * 0.85f, cy + r * 0.55f)
+        close()
+    }
+    canvas.drawPath(path, pinPaint)
+    canvas.drawPath(path, borderPaint)
+
+    // Pictogramme blanc du vehicule (roues + cadre/guidon), different selon le type
+    val glyphPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.WHITE
+        style = Paint.Style.STROKE
+        strokeWidth = 1.8f * density
+        strokeCap = Paint.Cap.ROUND
+    }
+    val wheelR = w * 0.075f
+    val wheelY = cy + w * 0.09f
+
+    when (vehicleTypeId) {
+        "yego_bike" -> {
+            // Velo : 2 roues identiques + cadre triangulaire
+            val leftX = cx - w * 0.13f
+            val rightX = cx + w * 0.13f
+            canvas.drawCircle(leftX, wheelY, wheelR, glyphPaint)
+            canvas.drawCircle(rightX, wheelY, wheelR, glyphPaint)
+            canvas.drawLine(leftX, wheelY, cx, cy - w * 0.05f, glyphPaint)
+            canvas.drawLine(cx, cy - w * 0.05f, rightX, wheelY, glyphPaint)
+            canvas.drawLine(leftX, wheelY, rightX - w * 0.02f, cy - w * 0.02f, glyphPaint)
+        }
+
+        "yego_kick" -> {
+            // Trottinette : petites roues + plateforme + tige/guidon
+            val leftX = cx - w * 0.1f
+            val rightX = cx + w * 0.14f
+            canvas.drawCircle(leftX, wheelY, wheelR * 0.8f, glyphPaint)
+            canvas.drawCircle(rightX, wheelY, wheelR * 0.8f, glyphPaint)
+            canvas.drawLine(leftX, wheelY, rightX, wheelY, glyphPaint)
+            canvas.drawLine(rightX, wheelY, rightX, cy - w * 0.12f, glyphPaint)
+            canvas.drawLine(
+                rightX - w * 0.05f,
+                cy - w * 0.12f,
+                rightX + w * 0.05f,
+                cy - w * 0.12f,
+                glyphPaint
+            )
+        }
+
+        else -> {
+            // Scooter/moped par defaut : 2 roues + assise + guidon avant
+            val leftX = cx - w * 0.12f
+            val rightX = cx + w * 0.12f
+            canvas.drawCircle(leftX, wheelY, wheelR, glyphPaint)
+            canvas.drawCircle(rightX, wheelY, wheelR, glyphPaint)
+            canvas.drawLine(leftX, wheelY, cx + w * 0.02f, cy - w * 0.02f, glyphPaint)
+            canvas.drawLine(cx + w * 0.02f, cy - w * 0.02f, rightX, wheelY, glyphPaint)
+            canvas.drawLine(
+                cx - w * 0.02f,
+                cy - w * 0.02f,
+                cx - w * 0.02f,
+                cy - w * 0.14f,
+                glyphPaint
+            )
+        }
+    }
 
     return BitmapDrawable(context.resources, bitmap)
 }

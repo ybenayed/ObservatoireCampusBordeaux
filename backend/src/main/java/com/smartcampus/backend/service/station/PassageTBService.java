@@ -13,6 +13,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 
 @Slf4j
 @Service
@@ -26,8 +28,49 @@ public class PassageTBService {
         "https://bdx.mecatran.com/utw/ws/siri/2.0/bordeaux/stop-monitoring.json" +
         "?AccountKey=opendata-bordeaux-metropole-flux-gtfs-rt&MonitoringRef={stopId}";
 
+    // Duree de vie du cache par arret - les horaires temps reel n'ont pas besoin
+    // d'une precision a la seconde, 20s est un bon compromis fraicheur/charge API
+    private static final long CACHE_TTL_SECONDS = 20;
+
+    // Cache par stopId : chaque arret a sa propre entree, avec sa propre expiration
+    private final ConcurrentHashMap<String, CacheEntry> cache = new ConcurrentHashMap<>();
+
+    // Verrou par stopId : evite que 2 requetes concurrentes sur le MEME arret
+    // declenchent 2 appels API en double pendant le refresh
+    private final ConcurrentHashMap<String, ReentrantLock> locks = new ConcurrentHashMap<>();
+
+    private record CacheEntry(List<PassageTBDTO> passages, Instant expiresAt) {
+        boolean isExpired() {
+            return Instant.now().isAfter(expiresAt);
+        }
+    }
+
     // Meme API pour bus et tram - seul le stopId change
     public List<PassageTBDTO> getNextPassages(String stopId) {
+        CacheEntry entry = cache.get(stopId);
+        if (entry != null && !entry.isExpired()) {
+            return entry.passages();
+        }
+
+        ReentrantLock lock = locks.computeIfAbsent(stopId, k -> new ReentrantLock());
+        lock.lock();
+        try {
+            // Double-check : un autre thread a peut-etre deja rafraichi pendant qu'on attendait le lock
+            entry = cache.get(stopId);
+            if (entry != null && !entry.isExpired()) {
+                return entry.passages();
+            }
+
+            List<PassageTBDTO> fresh = fetchFromApi(stopId);
+            cache.put(stopId, new CacheEntry(fresh, Instant.now().plusSeconds(CACHE_TTL_SECONDS)));
+            return fresh;
+
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    private List<PassageTBDTO> fetchFromApi(String stopId) {
         String url = UriComponentsBuilder.fromUriString(MONITORING_URL)
             .buildAndExpand(stopId)
             .toUriString();
@@ -65,6 +108,7 @@ public class PassageTBService {
             throw new RuntimeException("Erreur recuperation passages pour " + stopId, e);
         }
 
+        log.info("Passages rafraichis pour {} : {} resultats", stopId, passages.size());
         return passages;
     }
 
