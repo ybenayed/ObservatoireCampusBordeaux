@@ -22,12 +22,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ObservatoireCampus.mobile.repository.weather.AirQualityRepository
 import com.ObservatoireCampus.mobile.repository.weather.WeatherRepository
 import com.ObservatoireCampus.mobile.ui.components.ErrorBanner
+import com.ObservatoireCampus.mobile.ui.components.TopBar
 import com.ObservatoireCampus.mobile.ui.components.weather.AirQualityPanel
 import com.ObservatoireCampus.mobile.ui.components.weather.CurrentDateTimeHeader
 import com.ObservatoireCampus.mobile.ui.components.weather.HourlyWeatherScale
 import com.ObservatoireCampus.mobile.ui.components.weather.TemperatureCurve
 import com.ObservatoireCampus.mobile.ui.components.weather.WeatherBackgroundArt
-import com.ObservatoireCampus.mobile.ui.components.weather.WeatherTopBar
 import com.ObservatoireCampus.mobile.ui.components.weather.WeekDayNavigator
 import com.ObservatoireCampus.mobile.ui.theme.ObcampusPrimary
 import com.ObservatoireCampus.mobile.viewmodel.weather.WeatherViewModel
@@ -35,9 +35,8 @@ import com.ObservatoireCampus.mobile.viewmodel.weather.WeatherViewModelFactory
 
 /**
  * Ecran Meteo complet. Assemble les petits composants de ui/components/weather :
- * nav du haut, illustration, navigation par jour, courbe + echelle horaire,
- * panneau qualite de l'air. Ne contient (volontairement) aucune logique detaillee,
- * juste l'agencement -> chaque brique reste modifiable independamment.
+ * nav du haut, illustration (agrandie, avec la vraie icone du moment), navigation par
+ * jour, courbe blanche + echelle horaire, panneau qualite de l'air empile.
  */
 @Composable
 fun WeatherScreen(
@@ -57,8 +56,15 @@ fun WeatherScreen(
 
     LaunchedEffect(Unit) { viewModel.loadInitial() }
 
+    // Icone de l'heure actuellement selectionnee, utilisee en grand dans le fond d'ecran
+    val currentIconUrl = hourlyPoints.getOrNull(selectedHourIndex)?.icon
+
     Column(modifier = Modifier.fillMaxSize()) {
-        WeatherTopBar(onBack = onBack)
+
+        TopBar(
+            onMenuClick = onBack,
+            isBackButton = true
+        )
 
         Column(
             modifier = Modifier
@@ -66,7 +72,7 @@ fun WeatherScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             Box {
-                WeatherBackgroundArt()
+                WeatherBackgroundArt(currentIconUrl = currentIconUrl)
                 Column(
                     modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -78,7 +84,7 @@ fun WeatherScreen(
                         onPrevious = { viewModel.shiftDay(-1) },
                         onNext = { viewModel.shiftDay(1) }
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
                     if (hourlyPoints.isNotEmpty()) {
                         TemperatureCurve(
                             points = hourlyPoints,

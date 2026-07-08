@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack // AJOUT DE L'IMPORT
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -19,11 +20,13 @@ import com.ObservatoireCampus.mobile.ui.theme.ObcampusPrimary
 import com.ObservatoireCampus.mobile.ui.theme.ObcampusTextWhite
 
 /**
- * Barre de navigation supérieure : icône menu (ouvre le drawer) + titre.
- * Le bouton campus est géré séparément par CampusButton.
+ * Barre de navigation supérieure : icône menu ou retour + titre.
  */
 @Composable
-fun TopBar(onMenuClick: () -> Unit) {
+fun TopBar(
+    onMenuClick: () -> Unit,
+    isBackButton: Boolean = false // AJOUT : Faux par défaut pour ne pas casser MapScreen
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -33,9 +36,10 @@ fun TopBar(onMenuClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         IconButton(onClick = onMenuClick) {
+            // AJOUT : Condition pour intervertir l'icône et sa description
             Icon(
-                imageVector = Icons.Default.Menu,
-                contentDescription = "Menu",
+                imageVector = if (isBackButton) Icons.Default.ArrowBack else Icons.Default.Menu,
+                contentDescription = if (isBackButton) "Retour" else "Menu",
                 tint = ObcampusTextWhite
             )
         }

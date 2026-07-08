@@ -20,6 +20,7 @@ import com.ObservatoireCampus.mobile.ui.components.layers.station.StationTBDrawe
 import com.ObservatoireCampus.mobile.ui.components.layers.station.StationVDrawerSection
 import com.ObservatoireCampus.mobile.ui.theme.ObcampusPrimary
 import com.ObservatoireCampus.mobile.ui.theme.ObcampusSecondary
+import androidx.compose.foundation.clickable
 
 private data class DrawerOption(
     val label: String,
@@ -52,13 +53,15 @@ fun DrawerMenu(
     onStationVExpandToggle: () -> Unit,
     onStationVMasterToggle: () -> Unit,
     onStationVItemToggle: (String) -> Unit,
-    // ─── NOUVEAU : Libre-service (scooter/velo/trottinette electrique)
+    // ─── Libre-service (scooter/velo/trottinette electrique)
     freeVehicleLayers: List<LayerItemUiState>,
     freeVehicleMasterActive: Boolean,
     freeVehicleExpanded: Boolean,
     onFreeVehicleExpandToggle: () -> Unit,
     onFreeVehicleMasterToggle: () -> Unit,
     onFreeVehicleItemToggle: (String) -> Unit,
+    // -- Weather
+    onWeatherClick: () -> Unit = {},
     onOptionClick: (String, Boolean) -> Unit = { _, _ -> },
     onBackToMap: () -> Unit = {},
     onLogout: () -> Unit = {}
@@ -142,6 +145,11 @@ fun DrawerMenu(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .clickable {
+                        if (option.label == "Meteo") {
+                            onWeatherClick()
+                        }
+                    }
                     .padding(horizontal = 12.dp, vertical = 6.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(

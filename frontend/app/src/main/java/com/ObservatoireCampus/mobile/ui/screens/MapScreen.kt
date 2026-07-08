@@ -141,10 +141,18 @@ fun MapScreen(
                 onFreeVehicleExpandToggle = { freeVehicleExpanded = !freeVehicleExpanded },
                 onFreeVehicleMasterToggle = { freeVehicleViewModel.toggleMaster() },
                 onFreeVehicleItemToggle = { key -> freeVehicleViewModel.toggleType(key) },
+
+                // LIGNE CORRIGÉE : Déclenche la même action que le Badge + ferme le Drawer
+                onWeatherClick = {
+                    scope.launch { drawerState.close() }
+                    onWeatherClick()
+                },
+
                 onBackToMap = { scope.launch { drawerState.close() } }
             )
         }
     ) {
+        // ... le reste de ton Box et de ton contenu reste identique
         Box(
             modifier = Modifier
                 .fillMaxSize()
