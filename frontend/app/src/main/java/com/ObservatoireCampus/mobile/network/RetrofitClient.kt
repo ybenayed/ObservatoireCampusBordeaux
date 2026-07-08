@@ -18,5 +18,7 @@ object RetrofitClient {
     val stationTBApi: StationTBApi by lazy { retrofit.create(StationTBApi::class.java) }
     val stationVApi: StationVApi by lazy { retrofit.create(StationVApi::class.java) }
     val freeVehicleApi: FreeVehicleApi by lazy { retrofit.create(FreeVehicleApi::class.java) }
+    val weatherApi: WeatherApi by lazy { retrofit.create(WeatherApi::class.java) }
+    val airQualityApi: AirQualityApi by lazy { retrofit.create(AirQualityApi::class.java) }
 
 }

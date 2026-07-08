@@ -23,6 +23,7 @@ import com.ObservatoireCampus.mobile.ui.components.ErrorBanner
 import com.ObservatoireCampus.mobile.ui.components.SearchBar
 import com.ObservatoireCampus.mobile.ui.components.TopBar
 import com.ObservatoireCampus.mobile.ui.components.ZoomControls
+import com.ObservatoireCampus.mobile.ui.components.weather.CurrentWeatherBadge
 import com.ObservatoireCampus.mobile.ui.components.station.StationTBBubble
 import com.ObservatoireCampus.mobile.ui.components.station.StationVBubble
 import com.ObservatoireCampus.mobile.ui.theme.ObcampusBackground
@@ -44,7 +45,10 @@ import androidx.compose.runtime.getValue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MapScreen(viewModel: MapViewModel = viewModel()) {
+fun MapScreen(
+    viewModel: MapViewModel = viewModel(),
+    onWeatherClick: () -> Unit = {}
+) {
     val campusList by viewModel.campusList.collectAsState()
     val campusError by viewModel.error.collectAsState()
 
@@ -91,9 +95,10 @@ fun MapScreen(viewModel: MapViewModel = viewModel()) {
     var freeVehicleExpanded by remember { mutableStateOf(false) }
 
     // Une seule zone d'erreur pour tout l'ecran : on combine les sources
-    val combinedError = listOfNotNull(campusError, parkingError, stationTBError, stationVError, freeVehicleError)
-        .takeIf { it.isNotEmpty() }
-        ?.joinToString(" | ")
+    val combinedError =
+        listOfNotNull(campusError, parkingError, stationTBError, stationVError, freeVehicleError)
+            .takeIf { it.isNotEmpty() }
+            ?.joinToString(" | ")
 
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -178,6 +183,14 @@ fun MapScreen(viewModel: MapViewModel = viewModel()) {
                     .padding(bottom = 24.dp, end = 16.dp)
             )
 
+            // Badge meteo actuelle (icone + temperature), bas gauche -> ouvre l'ecran Meteo
+            CurrentWeatherBadge(
+                onClick = onWeatherClick,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(bottom = 24.dp, start = 16.dp)
+            )
+
             // Zone d'erreur UNIQUE pour tout l'ecran
             ErrorBanner(
                 error = combinedError,
@@ -200,26 +213,28 @@ fun MapScreen(viewModel: MapViewModel = viewModel()) {
             }
 
             if (selectedStationTB == null) {
-                selectedStationVDetail?.let {
-                    StationVBubble(
-                        detail = selectedStationVDetail,
-                        loading = bubbleLoadingV,
-                        onClose = { stationVViewModel.closeBubble() },
+                if (selectedStationTB == null) {
+                    selectedStationVDetail?.let {
+                        StationVBubble(
+                            detail = selectedStationVDetail,
+                            loading = bubbleLoadingV,
+                            onClose = { stationVViewModel.closeBubble() },
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(bottom = 32.dp, start = 16.dp, end = 16.dp)
+                        )
+                    }
+                }
+                if (selectedStationTB == null && selectedStationVDetail == null && selectedFreeVehicleId != null) {
+                    FreeVehicleBubble(
+                        detail = selectedFreeVehicle,
+                        loading = bubbleLoadingFV,
+                        onClose = { freeVehicleViewModel.closeBubble() },
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
                             .padding(bottom = 32.dp, start = 16.dp, end = 16.dp)
                     )
                 }
-            }
-            if (selectedStationTB == null && selectedStationVDetail == null && selectedFreeVehicleId != null) {
-                FreeVehicleBubble(
-                    detail = selectedFreeVehicle,
-                    loading = bubbleLoadingFV,
-                    onClose = { freeVehicleViewModel.closeBubble() },
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 32.dp, start = 16.dp, end = 16.dp)
-                )
             }
         }
     }
