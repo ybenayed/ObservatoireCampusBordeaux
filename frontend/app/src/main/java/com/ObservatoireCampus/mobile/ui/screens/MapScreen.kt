@@ -26,6 +26,7 @@ import com.ObservatoireCampus.mobile.ui.components.ZoomControls
 import com.ObservatoireCampus.mobile.ui.components.weather.CurrentWeatherBadge
 import com.ObservatoireCampus.mobile.ui.components.station.StationTBBubble
 import com.ObservatoireCampus.mobile.ui.components.station.StationVBubble
+import com.ObservatoireCampus.mobile.ui.components.parking.ParkingBubble
 import com.ObservatoireCampus.mobile.ui.theme.ObcampusBackground
 import com.ObservatoireCampus.mobile.viewmodel.MapViewModel
 import com.ObservatoireCampus.mobile.viewmodel.parking.ParkingViewModel
@@ -59,6 +60,9 @@ fun MapScreen(
     val parkingLayers by parkingViewModel.parkingLayers.collectAsState()
     val visibleParking by parkingViewModel.visiblePositions.collectAsState()
     val parkingError by parkingViewModel.error.collectAsState()
+    val selectedParkingId by parkingViewModel.selectedParkingId.collectAsState()
+    val selectedParkingStatus by parkingViewModel.selectedParkingStatus.collectAsState()
+    val bubbleLoadingParking by parkingViewModel.bubbleLoading.collectAsState()
     var parkingExpanded by remember { mutableStateOf(false) }
 
     // Bus / Tram
@@ -160,6 +164,7 @@ fun MapScreen(
                 campusList = campusList,
                 showPolygons = showCampus,
                 parkingList = visibleParking,
+                onParkingClick = { parkingViewModel.onParkingClicked(it.id) },
                 stationTBList = visibleStationsTB,
                 onStationTBClick = { stationTBViewModel.onStationClicked(it) },
                 stationVList = visibleStationsV,
@@ -208,7 +213,16 @@ fun MapScreen(
             )
 
             // --- GESTION DES BULLES D'INFO ---
-            if (selectedStationTB != null) {
+            if (selectedParkingId != null) {
+                ParkingBubble(
+                    status = selectedParkingStatus,
+                    loading = bubbleLoadingParking,
+                    onClose = { parkingViewModel.closeBubble() },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 32.dp, start = 16.dp, end = 16.dp)
+                )
+            } else if (selectedStationTB != null) {
                 StationTBBubble(
                     station = selectedStationTB!!,
                     passages = passagesTB,
@@ -219,7 +233,6 @@ fun MapScreen(
                         .padding(bottom = 32.dp, start = 16.dp, end = 16.dp)
                 )
             } else if (selectedStationVDetail != null) {
-                // On essaie de retrouver la position correspondante pour l'en-tête de secours
                 val positionCorrespondante = visibleStationsV.find { it.stationId == selectedStationVDetail!!.stationId }
                     ?: StationVPositionDto(0L, selectedStationVDetail!!.stationId, selectedStationVDetail!!.nom ?: "Station", selectedStationVDetail!!.latitude, selectedStationVDetail!!.longitude)
 

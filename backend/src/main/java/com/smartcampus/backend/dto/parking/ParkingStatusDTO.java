@@ -1,9 +1,10 @@
 package com.smartcampus.backend.dto.parking;
 
 import lombok.*;
+import java.time.OffsetDateTime;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
-public class ParkingDTO {
+public class ParkingStatusDTO {
     private Long id;
     private String ident;
     private String nom;
@@ -15,7 +16,7 @@ public class ParkingDTO {
     private Double latitude;
     private Double longitude;
 
-    // Capacités détaillées
+    // Capacités
     private Integer npTotal;
     private Integer npGlobal;
     private Integer npPmr;
@@ -45,7 +46,7 @@ public class ParkingDTO {
     private Double taMoivel;
     private String taHandi;
 
-    // Caractéristiques techniques
+    // Infra
     private String anServ;
     private String secteur;
     private String propr;
@@ -53,6 +54,14 @@ public class ParkingDTO {
     private Integer nbNiv;
     private Double gabariStd;
     private Double gabariMax;
+
+    // Données dynamiques (Temps Réel)
+    private String etat;
+    private Integer libre;
+    private Integer totalTempsReel;
+    private Boolean connecte;
+    private OffsetDateTime mdate;
+    private boolean dataFraiche; 
 
     private String url;
 }

@@ -42,6 +42,7 @@ fun CampusMap(
     campusList: List<CampusDto>,
     showPolygons: Boolean,
     parkingList: List<ParkingPositionDto> = emptyList(),
+    onParkingClick: (ParkingPositionDto) -> Unit = {},
     stationTBList: List<StationTBPositionDto> = emptyList(),
     onStationTBClick: (StationTBPositionDto) -> Unit = {},
     stationVList: List<StationVPositionDto> = emptyList(),
@@ -59,12 +60,13 @@ fun CampusMap(
         if (showPolygons && campusList.isNotEmpty()) {
             drawCampusPolygons(mapView, campusList)
         }
-        drawParkingMarkers(mapView, parkingList)
+        drawParkingMarkers(mapView, parkingList, onParkingClick)
         drawStationTBMarkers(mapView, stationTBList, onStationTBClick)
         drawStationVMarkers(mapView, stationVList, onStationVClick)
         drawFreeVehicleMarkers(mapView, freeVehicleList, onFreeVehicleClick)
         mapView.invalidate()
     }
+
 
     AndroidView(
         modifier = modifier.fillMaxSize(),
@@ -113,7 +115,11 @@ private fun drawCampusPolygons(mapView: MapView, campusList: List<CampusDto>) {
     }
 }
 
-private fun drawParkingMarkers(mapView: MapView, parkingList: List<ParkingPositionDto>) {
+private fun drawParkingMarkers(
+    mapView: MapView,
+    parkingList: List<ParkingPositionDto>,
+    onClick: (ParkingPositionDto) -> Unit
+) {
     val context = mapView.context
 
     parkingList.forEach { parking ->
@@ -130,7 +136,7 @@ private fun drawParkingMarkers(mapView: MapView, parkingList: List<ParkingPositi
                 colorArgb = ParkingTypeStyle.color(parking.taType).toArgb(),
                 letter = ParkingTypeStyle.markerLetter(parking.taType)
             )
-            setOnMarkerClickListener { m, _ -> m.showInfoWindow(); true }
+            setOnMarkerClickListener { _, _ -> onClick(parking); true }
         }
         mapView.overlays.add(marker)
     }

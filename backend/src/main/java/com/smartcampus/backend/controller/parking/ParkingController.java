@@ -4,6 +4,7 @@ import com.smartcampus.backend.dto.parking.ParkingDTO;
 import com.smartcampus.backend.dto.parking.ParkingCountDTO;
 import com.smartcampus.backend.dto.parking.ParkingPositionDTO;  
 import com.smartcampus.backend.service.parking.ParkingService;
+import com.smartcampus.backend.dto.parking.ParkingStatusDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -73,5 +74,15 @@ public class ParkingController {
     @GetMapping("/count-by-type")
     public ResponseEntity<List<ParkingCountDTO>> getCountByType() {
         return ResponseEntity.ok(parkingService.getCountByType());
+    }
+    /**la partie  dynamique*/
+    @GetMapping("/status")
+    public ResponseEntity<List<ParkingStatusDTO>> getAllWithStatus() {
+        return ResponseEntity.ok(parkingService.getAllWithStatus());
+    }
+
+    @GetMapping("/{id}/status")
+    public ResponseEntity<ParkingStatusDTO> getStatusById(@PathVariable Long id) {
+        return ResponseEntity.ok(parkingService.getStatusById(id));
     }
 }

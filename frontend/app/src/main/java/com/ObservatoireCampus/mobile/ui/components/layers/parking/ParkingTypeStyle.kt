@@ -2,42 +2,65 @@ package com.ObservatoireCampus.mobile.ui.components.layers.parking
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DirectionsCar
-import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.DirectionsSubway
+import androidx.compose.material.icons.filled.Elevator
+import androidx.compose.material.icons.filled.Garage
 import androidx.compose.material.icons.filled.LocalParking
-import androidx.compose.material.icons.filled.MoneyOff
+import androidx.compose.material.icons.filled.Terrain
+import androidx.compose.material.icons.filled.Layers
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 
 /**
- * Mapping dynamique taType -> style visuel (icone, couleur, label lisible, lettre pour la carte).
- * Base sur des mots-cles pour rester generique meme si de nouveaux taType apparaissent.
+ * Style visuel par taType (tarification) : utilise dans le drawer (pastille + icone + label).
  */
 object ParkingTypeStyle {
 
-    fun label(taType: String): String =
-        taType.replace("_", " ")
-            .lowercase()
-            .split(" ")
-            .joinToString(" ") { it.replaceFirstChar(Char::uppercase) }
+    fun color(taType: String): Color = when {
+        taType.contains("PARC_RELAIS") -> Color(0xFF2E7D32)
+        taType.contains("GRATUIT") -> Color(0xFF1976D2)
+        taType.contains("HORAIRE") -> Color(0xFFEF6C00)
+        taType.contains("ABONNE") -> Color(0xFF7B1FA2)
+        else -> Color(0xFF616161)
+    }
 
     fun icon(taType: String): ImageVector = when {
-        "PARC_RELAIS" in taType -> Icons.Default.DirectionsCar
-        "GRATUIT" in taType -> Icons.Default.MoneyOff
-        "RESERVE" in taType -> Icons.Default.Lock
+        taType.contains("PARC_RELAIS") -> Icons.Default.DirectionsSubway
+        taType.contains("GRATUIT") -> Icons.Default.LocalParking
+        else -> Icons.Default.DirectionsCar
+    }
+
+    fun label(taType: String): String = when {
+        taType.contains("PARC_RELAIS") -> "Parc relais"
+        taType.contains("GRATUIT") -> "Gratuit"
+        taType.contains("HORAIRE") -> "Payant horaire"
+        taType.contains("ABONNE") -> "Abonnes"
+        else -> taType.replace("_", " ").lowercase()
+            .replaceFirstChar { it.uppercase() }
+    }
+
+    /** Lettre affichee dans le rond du marqueur sur la carte. */
+    fun markerLetter(taType: String): String = when {
+        taType.contains("PARC_RELAIS") -> "R"
+        taType.contains("GRATUIT") -> "G"
+        taType.contains("HORAIRE") -> "H"
+        taType.contains("ABONNE") -> "A"
+        else -> "P"
+    }
+
+    fun structureIcon(type: String?): ImageVector = when (type) {
+        "SILO" -> Icons.Default.Layers
+        "ENTERRE" -> Icons.Default.Elevator
+        "SURFACE" -> Icons.Default.Terrain
+        "MIXTE" -> Icons.Default.Garage
         else -> Icons.Default.LocalParking
     }
 
-    fun color(taType: String): Color = when {
-        "PARC_RELAIS" in taType -> Color(0xFF16A34A) // vert
-        "GRATUIT" in taType -> Color(0xFF0EA5E9)      // bleu clair
-        "RESERVE" in taType -> Color(0xFFF59E0B)      // orange
-        else -> Color(0xFF2563EB)                     // bleu (parking classique)
-    }
-
-    fun markerLetter(taType: String): String = when {
-        "PARC_RELAIS" in taType -> "PR"
-        "GRATUIT" in taType -> "PG"
-        "RESERVE" in taType -> "PR"
-        else -> "P"
+    fun structureLabel(type: String?): String = when (type) {
+        "SILO" -> "Silo"
+        "ENTERRE" -> "Souterrain"
+        "SURFACE" -> "Surface"
+        "MIXTE" -> "Mixte"
+        else -> "Parking"
     }
 }
