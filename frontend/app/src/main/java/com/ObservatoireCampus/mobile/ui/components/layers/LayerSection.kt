@@ -2,18 +2,15 @@ package com.ObservatoireCampus.mobile.ui.components.layers
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Icon
@@ -23,15 +20,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.ObservatoireCampus.mobile.model.layers.LayerItemUiState
 import com.ObservatoireCampus.mobile.ui.components.layers.parking.ParkingTypeStyle
-import androidx.compose.runtime.getValue
 
 @Composable
 fun LayerSection(
@@ -47,8 +42,6 @@ fun LayerSection(
     itemIcon: (String) -> ImageVector = { ParkingTypeStyle.icon(it) },
     itemLabel: (String) -> String = { ParkingTypeStyle.label(it) }
 ) {
-    val chevronRotation by animateFloatAsState(if (expanded) 180f else 0f, label = "chevron")
-
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -58,19 +51,19 @@ fun LayerSection(
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
     ) {
         Column {
-            // Ligne maitre
+            // Ligne maître principale
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .clickable(onClick = onExpandToggle)
                     .padding(horizontal = 12.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
+                // Partie gauche : Œil + Icône + Texte (Prend toute la place disponible pour repousser la suite)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .weight(1f)
-                        .clickable(onClick = onExpandToggle)
+                    modifier = Modifier.weight(1f).padding(end = 8.dp)
                 ) {
                     EyeToggleButton(active = masterActive, onClick = onMasterToggle, size = 34.dp)
 
@@ -82,25 +75,22 @@ fun LayerSection(
                         tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(20.dp)
                     )
+
                     Spacer(modifier = Modifier.width(8.dp))
+
                     Text(
                         text = label,
                         fontWeight = FontWeight.SemiBold,
-                        style = MaterialTheme.typography.bodyLarge
+                        style = MaterialTheme.typography.bodyLarge,
+                        maxLines = 2, // Texte sur deux lignes max
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f) // Absorbe l'espace pour aligner le badge à droite
                     )
-
-                    if (items.isNotEmpty()) {
-                        Spacer(modifier = Modifier.width(6.dp))
-                        CountBadge(count = items.sumOf { it.count })
-                    }
                 }
 
+                // Partie droite : Nombre global (Badge) aligné tout à la fin
                 if (items.isNotEmpty()) {
-                    Icon(
-                        imageVector = Icons.Default.KeyboardArrowDown,
-                        contentDescription = "Deplier",
-                        modifier = Modifier.rotate(chevronRotation)
-                    )
+                    CountBadge(count = items.sumOf { it.count })
                 }
             }
 
@@ -138,11 +128,14 @@ private fun LayerSubItemRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 44.dp, end = 12.dp, top = 5.dp, bottom = 5.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.CenterVertically, // Aligne verticalement au milieu des deux lignes de texte
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-            // Pastille coloree - identique visuellement au marqueur carte du meme type
+        // Partie gauche : Pastille + Texte
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.weight(1f).padding(end = 8.dp)
+        ) {
             Surface(
                 shape = CircleShape,
                 color = color.copy(alpha = if (item.visible) 1f else 0.25f),
@@ -164,13 +157,22 @@ private fun LayerSubItemRow(
                 text = label,
                 style = MaterialTheme.typography.bodyMedium,
                 color = if (item.visible) MaterialTheme.colorScheme.onSurface
-                else MaterialTheme.colorScheme.onSurfaceVariant
+                else MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2, // Autorise l'écriture sur 2 lignes
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f) // Pousse la suite à l'extrême droite
             )
-            Spacer(modifier = Modifier.width(6.dp))
-            CountBadge(count = item.count, subtle = true)
         }
 
-        EyeToggleButton(active = item.visible, onClick = onToggle, size = 28.dp)
+        // Partie droite : Nombre (Badge) + Œil groupés à la fin et alignés verticalement au milieu
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.End
+        ) {
+            CountBadge(count = item.count, subtle = true)
+            Spacer(modifier = Modifier.width(12.dp))
+            EyeToggleButton(active = item.visible, onClick = onToggle, size = 28.dp)
+        }
     }
 }
 

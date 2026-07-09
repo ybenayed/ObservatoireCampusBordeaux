@@ -27,7 +27,6 @@ private data class DrawerOption(
     val icon: ImageVector
 )
 
-// "Parking", "Velo", "Bus", "Tram", "Trottinette" retires d'ici - geres maintenant par leurs sections dynamiques
 private val drawerOptions = listOf(
     DrawerOption("Bornes electriques", Icons.Default.EvStation),
     DrawerOption("Meteo", Icons.Default.Cloud)
@@ -53,14 +52,12 @@ fun DrawerMenu(
     onStationVExpandToggle: () -> Unit,
     onStationVMasterToggle: () -> Unit,
     onStationVItemToggle: (String) -> Unit,
-    // ─── Libre-service (scooter/velo/trottinette electrique)
     freeVehicleLayers: List<LayerItemUiState>,
     freeVehicleMasterActive: Boolean,
     freeVehicleExpanded: Boolean,
     onFreeVehicleExpandToggle: () -> Unit,
     onFreeVehicleMasterToggle: () -> Unit,
     onFreeVehicleItemToggle: (String) -> Unit,
-    // -- Weather
     onWeatherClick: () -> Unit = {},
     onOptionClick: (String, Boolean) -> Unit = { _, _ -> },
     onBackToMap: () -> Unit = {},
@@ -73,7 +70,7 @@ fun DrawerMenu(
     ModalDrawerSheet(
         modifier = Modifier
             .fillMaxHeight()
-            .fillMaxWidth(0.66f)
+            .fillMaxWidth(0.69f)
             .background(Color.White)
     ) {
 
@@ -95,7 +92,7 @@ fun DrawerMenu(
             )
         }
 
-        Divider()
+        HorizontalDivider()
         Spacer(modifier = Modifier.height(8.dp))
 
         // PARKING - layer dynamique
@@ -118,7 +115,7 @@ fun DrawerMenu(
             onItemToggle = onStationTBItemToggle
         )
 
-        // VELO (stations statiques VCub) - layer dynamique
+        // VELO - layer dynamique
         StationVDrawerSection(
             items = stationVLayers,
             masterActive = stationVMasterActive,
@@ -128,7 +125,7 @@ fun DrawerMenu(
             onItemToggle = onStationVItemToggle
         )
 
-        // LIBRE-SERVICE (scooter/velo/trottinette electrique, free-floating) - layer dynamique
+        // LIBRE-SERVICE - layer dynamique
         FreeVehicleDrawerSection(
             items = freeVehicleLayers,
             masterActive = freeVehicleMasterActive,
@@ -138,58 +135,72 @@ fun DrawerMenu(
             onItemToggle = onFreeVehicleItemToggle
         )
 
-        // AUTRES OPTIONS - toujours statiques pour l'instant
+        // AUTRES OPTIONS - Statiques
         drawerOptions.forEach { option ->
             val isActive = activeStates[option.label] == true
 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable {
-                        if (option.label == "Meteo") {
-                            onWeatherClick()
-                        }
-                    }
                     .padding(horizontal = 12.dp, vertical = 6.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(
                         if (isActive) ObcampusSecondary.copy(alpha = 0.2f)
                         else Color.Transparent
                     )
+                    .clickable {
+                        if (option.label == "Meteo") {
+                            onWeatherClick()
+                        }
+                    }
                     .padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment = Alignment.CenterVertically, // Aligne verticalement l'icône, le texte et l'œil au milieu
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f).padding(end = 8.dp) // Repousse l'œil tout à la fin
+                ) {
                     Icon(
                         imageVector = option.icon,
                         contentDescription = option.label,
-                        tint = if (isActive) ObcampusPrimary else Color.Gray
+                        tint = if (isActive) ObcampusPrimary else Color.Gray,
+                        modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text(text = option.label)
+                    Text(
+                        text = option.label,
+                        maxLines = 2, // Autorise le nom à s'afficher sur deux lignes maximum
+                        modifier = Modifier.weight(1f) // Prend le maximum de place et pousse le reste vers le bout
+                    )
                 }
 
-                IconButton(
-                    onClick = {
-                        val newState = !(activeStates[option.label] ?: false)
-                        activeStates = activeStates.toMutableMap().apply {
-                            put(option.label, newState)
-                        }
-                        onOptionClick(option.label, newState)
+                if (option.label != "Meteo") {
+                    IconButton(
+                        onClick = {
+                            val newState = !(activeStates[option.label] ?: false)
+                            activeStates = activeStates.toMutableMap().apply {
+                                put(option.label, newState)
+                            }
+                            onOptionClick(option.label, newState)
+                        },
+                        modifier = Modifier.size(28.dp) // Taille fixe pour l'œil
+                    ) {
+                        Icon(
+                            imageVector = if (isActive) Icons.Default.Visibility
+                            else Icons.Default.VisibilityOff,
+                            contentDescription = "toggle"
+                        )
                     }
-                ) {
-                    Icon(
-                        imageVector = if (isActive) Icons.Default.Visibility
-                        else Icons.Default.VisibilityOff,
-                        contentDescription = "toggle"
-                    )
+                } else {
+                    // Spacer pour maintenir l'alignement même si l'icône météo n'a pas d'œil
+                    Spacer(modifier = Modifier.width(28.dp))
                 }
             }
         }
 
         Spacer(modifier = Modifier.weight(1f))
-        Divider()
+        HorizontalDivider()
 
         // LOGOUT
         Row(

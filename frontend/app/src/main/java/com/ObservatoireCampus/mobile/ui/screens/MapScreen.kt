@@ -42,6 +42,7 @@ import kotlinx.coroutines.launch
 import org.osmdroid.views.MapView
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import com.ObservatoireCampus.mobile.model.station.StationVPositionDto
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,7 +61,7 @@ fun MapScreen(
     val parkingError by parkingViewModel.error.collectAsState()
     var parkingExpanded by remember { mutableStateOf(false) }
 
-    // ─── Bus / Tram
+    // Bus / Tram
     val stationTBViewModel: StationTBViewModel = viewModel(
         factory = StationTBViewModelFactory(StationTBRepository())
     )
@@ -72,7 +73,7 @@ fun MapScreen(
     val stationTBError by stationTBViewModel.error.collectAsState()
     var stationTBExpanded by remember { mutableStateOf(false) }
 
-    // ─── Velo
+    // Velo
     val stationVViewModel: StationVViewModel = viewModel(
         factory = StationVViewModelFactory(StationVRepository())
     )
@@ -82,7 +83,8 @@ fun MapScreen(
     val bubbleLoadingV by stationVViewModel.bubbleLoading.collectAsState()
     val stationVError by stationVViewModel.error.collectAsState()
     var stationVExpanded by remember { mutableStateOf(false) }
-    // free vehicle
+
+    // Free vehicle
     val freeVehicleViewModel: FreeVehicleViewModel = viewModel(
         factory = FreeVehicleViewModelFactory(FreeVehicleRepository())
     )
@@ -141,18 +143,14 @@ fun MapScreen(
                 onFreeVehicleExpandToggle = { freeVehicleExpanded = !freeVehicleExpanded },
                 onFreeVehicleMasterToggle = { freeVehicleViewModel.toggleMaster() },
                 onFreeVehicleItemToggle = { key -> freeVehicleViewModel.toggleType(key) },
-
-                // LIGNE CORRIGÉE : Déclenche la même action que le Badge + ferme le Drawer
                 onWeatherClick = {
                     scope.launch { drawerState.close() }
                     onWeatherClick()
                 },
-
                 onBackToMap = { scope.launch { drawerState.close() } }
             )
         }
     ) {
-        // ... le reste de ton Box et de ton contenu reste identique
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -171,18 +169,22 @@ fun MapScreen(
                 onMapReady = { mapView = it },
                 modifier = Modifier.fillMaxSize()
             )
+
             TopBar(onMenuClick = { scope.launch { drawerState.open() } })
+
             SearchBar(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .padding(top = 64.dp)
             )
+
             CampusButton(
                 onClick = { showCampus = !showCampus },
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(top = 6.dp, end = 10.dp)
             )
+
             ZoomControls(
                 onZoomIn = { mapView?.controller?.zoomIn() },
                 onZoomOut = { mapView?.controller?.zoomOut() },
@@ -191,7 +193,6 @@ fun MapScreen(
                     .padding(bottom = 24.dp, end = 16.dp)
             )
 
-            // Badge meteo actuelle (icone + temperature), bas gauche -> ouvre l'ecran Meteo
             CurrentWeatherBadge(
                 onClick = onWeatherClick,
                 modifier = Modifier
@@ -199,7 +200,6 @@ fun MapScreen(
                     .padding(bottom = 24.dp, start = 16.dp)
             )
 
-            // Zone d'erreur UNIQUE pour tout l'ecran
             ErrorBanner(
                 error = combinedError,
                 modifier = Modifier
@@ -207,10 +207,10 @@ fun MapScreen(
                     .padding(top = 116.dp, start = 16.dp, end = 16.dp)
             )
 
-            // ─── Bulles d'info (une seule visible a la fois, priorite TB puis Velo)
-            selectedStationTB?.let { station ->
+            // --- GESTION DES BULLES D'INFO ---
+            if (selectedStationTB != null) {
                 StationTBBubble(
-                    station = station,
+                    station = selectedStationTB!!,
                     passages = passagesTB,
                     loading = bubbleLoadingTB,
                     onClose = { stationTBViewModel.closeBubble() },
@@ -218,31 +218,29 @@ fun MapScreen(
                         .align(Alignment.BottomCenter)
                         .padding(bottom = 32.dp, start = 16.dp, end = 16.dp)
                 )
-            }
+            } else if (selectedStationVDetail != null) {
+                // On essaie de retrouver la position correspondante pour l'en-tête de secours
+                val positionCorrespondante = visibleStationsV.find { it.stationId == selectedStationVDetail!!.stationId }
+                    ?: StationVPositionDto(0L, selectedStationVDetail!!.stationId, selectedStationVDetail!!.nom ?: "Station", selectedStationVDetail!!.latitude, selectedStationVDetail!!.longitude)
 
-            if (selectedStationTB == null) {
-                if (selectedStationTB == null) {
-                    selectedStationVDetail?.let {
-                        StationVBubble(
-                            detail = selectedStationVDetail,
-                            loading = bubbleLoadingV,
-                            onClose = { stationVViewModel.closeBubble() },
-                            modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .padding(bottom = 32.dp, start = 16.dp, end = 16.dp)
-                        )
-                    }
-                }
-                if (selectedStationTB == null && selectedStationVDetail == null && selectedFreeVehicleId != null) {
-                    FreeVehicleBubble(
-                        detail = selectedFreeVehicle,
-                        loading = bubbleLoadingFV,
-                        onClose = { freeVehicleViewModel.closeBubble() },
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(bottom = 32.dp, start = 16.dp, end = 16.dp)
-                    )
-                }
+                StationVBubble(
+                    position = positionCorrespondante,
+                    detail = selectedStationVDetail,
+                    loading = bubbleLoadingV,
+                    onClose = { stationVViewModel.closeBubble() },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 32.dp, start = 16.dp, end = 16.dp)
+                )
+            } else if (selectedFreeVehicleId != null) {
+                FreeVehicleBubble(
+                    detail = selectedFreeVehicle,
+                    loading = bubbleLoadingFV,
+                    onClose = { freeVehicleViewModel.closeBubble() },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 32.dp, start = 16.dp, end = 16.dp)
+                )
             }
         }
     }
