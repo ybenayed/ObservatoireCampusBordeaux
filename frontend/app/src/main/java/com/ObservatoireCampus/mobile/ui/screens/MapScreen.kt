@@ -17,6 +17,7 @@ import com.ObservatoireCampus.mobile.repository.ParkingRepository
 import com.ObservatoireCampus.mobile.repository.station.StationTBRepository
 import com.ObservatoireCampus.mobile.repository.station.StationVRepository
 import com.ObservatoireCampus.mobile.ui.components.CampusButton
+import com.ObservatoireCampus.mobile.ui.components.LocationButton
 import com.ObservatoireCampus.mobile.ui.components.CampusMap
 import com.ObservatoireCampus.mobile.ui.components.DrawerMenu
 import com.ObservatoireCampus.mobile.ui.components.ErrorBanner
@@ -27,6 +28,9 @@ import com.ObservatoireCampus.mobile.ui.components.weather.CurrentWeatherBadge
 import com.ObservatoireCampus.mobile.ui.components.station.StationTBBubble
 import com.ObservatoireCampus.mobile.ui.components.station.StationVBubble
 import com.ObservatoireCampus.mobile.ui.components.parking.ParkingBubble
+import com.ObservatoireCampus.mobile.ui.components.location.LocationBubble
+import com.ObservatoireCampus.mobile.ui.components.location.upsertUserLocationMarker
+import com.ObservatoireCampus.mobile.ui.components.location.removeUserLocationMarker
 import com.ObservatoireCampus.mobile.ui.theme.ObcampusBackground
 import com.ObservatoireCampus.mobile.viewmodel.MapViewModel
 import com.ObservatoireCampus.mobile.viewmodel.parking.ParkingViewModel
@@ -39,8 +43,14 @@ import com.ObservatoireCampus.mobile.viewmodel.freevehicle.FreeVehicleViewModel
 import com.ObservatoireCampus.mobile.viewmodel.freevehicle.FreeVehicleViewModelFactory
 import com.ObservatoireCampus.mobile.repository.freevehicle.FreeVehicleRepository
 import com.ObservatoireCampus.mobile.ui.components.freevehicle.FreeVehicleBubble
+import androidx.compose.ui.platform.LocalContext
+import com.ObservatoireCampus.mobile.viewmodel.location.LocationViewModel
+import com.ObservatoireCampus.mobile.viewmodel.location.LocationViewModelFactory
+import com.google.android.gms.location.LocationServices
 import kotlinx.coroutines.launch
+import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.Marker
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.ObservatoireCampus.mobile.model.station.StationVPositionDto
@@ -49,7 +59,7 @@ import com.ObservatoireCampus.mobile.model.station.StationVPositionDto
 @Composable
 fun MapScreen(
     viewModel: MapViewModel = viewModel(),
-    onWeatherClick: () -> Unit = {}
+    onWeatherClick: (Double?, Double?) -> Unit = { _, _ -> }
 ) {
     val campusList by viewModel.campusList.collectAsState()
     val campusError by viewModel.error.collectAsState()
@@ -100,6 +110,16 @@ fun MapScreen(
     val bubbleLoadingFV by freeVehicleViewModel.bubbleLoading.collectAsState()
     var freeVehicleExpanded by remember { mutableStateOf(false) }
 
+    // Localisation utilisateur
+    val context = LocalContext.current
+    val locationViewModel: LocationViewModel = viewModel(
+        factory = LocationViewModelFactory(LocationServices.getFusedLocationProviderClient(context))
+    )
+    val userLocation by locationViewModel.userLocation.collectAsState()
+    val locationBubbleVisible by locationViewModel.bubbleVisible.collectAsState()
+    val locationAccuracy by locationViewModel.accuracyMeters.collectAsState()
+    val locationState by locationViewModel.locationState.collectAsState()
+
     // Une seule zone d'erreur pour tout l'ecran : on combine les sources
     val combinedError =
         listOfNotNull(campusError, parkingError, stationTBError, stationVError, freeVehicleError)
@@ -111,12 +131,37 @@ fun MapScreen(
     var mapView by remember { mutableStateOf<MapView?>(null) }
     var showCampus by remember { mutableStateOf(false) }
 
+    // NOUVEAU : référence du marqueur "Ma position" pour le déplacer sans le recréer
+    var userLocationMarker by remember { mutableStateOf<Marker?>(null) }
+
     LaunchedEffect(Unit) {
         if (campusList.isEmpty()) viewModel.loadCampus()
         parkingViewModel.loadParking()
         stationTBViewModel.loadStations()
         stationVViewModel.loadStations()
         freeVehicleViewModel.loadStations()
+    }
+
+    // NOUVEAU : dès qu'on a une position ET que la MapView est prête, on dessine/déplace le marqueur.
+    // Si userLocation redevient null (clic sur "clear"), on retire le marqueur de la carte.
+    LaunchedEffect(userLocation, mapView) {
+        val currentMapView = mapView ?: return@LaunchedEffect
+        val point = userLocation
+
+        if (point != null) {
+            userLocationMarker = upsertUserLocationMarker(
+                mapView = currentMapView,
+                existing = userLocationMarker,
+                point = point,
+                onClick = { locationViewModel.onMarkerClicked() }
+            )
+            // On centre ET on zoome sur la position à chaque nouveau fix GPS
+            currentMapView.controller.setZoom(18.0)
+            currentMapView.controller.animateTo(point)
+        } else if (userLocationMarker != null) {
+            removeUserLocationMarker(currentMapView, userLocationMarker)
+            userLocationMarker = null
+        }
     }
 
     ModalNavigationDrawer(
@@ -149,7 +194,7 @@ fun MapScreen(
                 onFreeVehicleItemToggle = { key -> freeVehicleViewModel.toggleType(key) },
                 onWeatherClick = {
                     scope.launch { drawerState.close() }
-                    onWeatherClick()
+                    onWeatherClick(userLocation?.latitude, userLocation?.longitude)
                 },
                 onBackToMap = { scope.launch { drawerState.close() } }
             )
@@ -189,6 +234,12 @@ fun MapScreen(
                     .align(Alignment.TopEnd)
                     .padding(top = 6.dp, end = 10.dp)
             )
+            LocationButton(
+                viewModel = locationViewModel,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 6.dp, end = 62.dp)
+            )
 
             ZoomControls(
                 onZoomIn = { mapView?.controller?.zoomIn() },
@@ -199,7 +250,7 @@ fun MapScreen(
             )
 
             CurrentWeatherBadge(
-                onClick = onWeatherClick,
+                onClick = { onWeatherClick(userLocation?.latitude, userLocation?.longitude) },
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .padding(bottom = 24.dp, start = 16.dp)
@@ -250,6 +301,17 @@ fun MapScreen(
                     detail = selectedFreeVehicle,
                     loading = bubbleLoadingFV,
                     onClose = { freeVehicleViewModel.closeBubble() },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 32.dp, start = 16.dp, end = 16.dp)
+                )
+            } else if (locationBubbleVisible) {
+                // NOUVEAU : bulle "Ma position"
+                LocationBubble(
+                    point = userLocation,
+                    loading = locationState is com.ObservatoireCampus.mobile.viewmodel.location.LocationUiState.Loading,
+                    accuracyMeters = locationAccuracy,
+                    onClose = { locationViewModel.closeBubble() },
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .padding(bottom = 32.dp, start = 16.dp, end = 16.dp)

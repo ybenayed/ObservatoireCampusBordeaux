@@ -179,9 +179,9 @@ fun ParkingBubble(
                         // --- ALERTE SI ALIMENTATION OBSOLÈTE ---
                         if (!status.dataFraiche) {
                             Text(
-                                text = "⚠ Données dynamiques obsolètes",
+                                text = "⚠️ Données dynamiques obsolètes",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = Color(0xFFD32F2F), // Rouge pour accentuer le problème
+                                color = Color(0xFFD32F2F),
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(top = 4.dp)
                             )
@@ -220,6 +220,38 @@ private fun InfoRow(
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.End,
             modifier = Modifier.weight(2f).padding(start = 8.dp)
+        )
+    }
+}
+
+// --- LE COMPOSANT MANQUANT REQUIS POUR CORRIGER L'ERREUR ---
+@Composable
+private fun TarifRow(
+    label: String,
+    price: Any? // Utilisation de Any? au cas où vos prix soient des Double, Float ou String
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        val priceText = when (price) {
+            null -> "-"
+            is Number -> String.format(java.util.Locale.FRANCE, "%.2f €", price.toDouble())
+            else -> price.toString()
+        }
+
+        Text(
+            text = priceText,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = if (priceText == "-") FontWeight.Normal else FontWeight.Bold,
+            color = if (priceText == "-") Color.Gray else MaterialTheme.colorScheme.onSurface
         )
     }
 }

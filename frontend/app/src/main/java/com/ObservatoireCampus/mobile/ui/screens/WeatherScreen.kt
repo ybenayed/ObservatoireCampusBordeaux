@@ -37,10 +37,16 @@ import com.ObservatoireCampus.mobile.viewmodel.weather.WeatherViewModelFactory
  * Ecran Meteo complet. Assemble les petits composants de ui/components/weather :
  * nav du haut, illustration (agrandie, avec la vraie icone du moment), navigation par
  * jour, courbe blanche + echelle horaire, panneau qualite de l'air empile.
+ *
+ * userLat / userLon : position de l'utilisateur (recuperee sur MapScreen). Si null,
+ * le ViewModel retombe automatiquement sur les coordonnees du campus et remonte
+ * un message d'avertissement (locationWarning), affiche ici via ErrorBanner.
  */
 @Composable
 fun WeatherScreen(
     onBack: () -> Unit,
+    userLat: Double? = null,
+    userLon: Double? = null,
     viewModel: WeatherViewModel = viewModel(
         factory = WeatherViewModelFactory(WeatherRepository(), AirQualityRepository())
     )
@@ -53,8 +59,9 @@ fun WeatherScreen(
     val showHourlyAirQuality by viewModel.showHourlyAirQuality.collectAsState()
     val loading by viewModel.loading.collectAsState()
     val error by viewModel.error.collectAsState()
+    val locationWarning by viewModel.locationWarning.collectAsState()
 
-    LaunchedEffect(Unit) { viewModel.loadInitial() }
+    LaunchedEffect(Unit) { viewModel.loadInitial(userLat = userLat, userLon = userLon) }
 
     // Icone de l'heure actuellement selectionnee, utilisee en grand dans le fond d'ecran
     val currentIconUrl = hourlyPoints.getOrNull(selectedHourIndex)?.icon
@@ -100,6 +107,10 @@ fun WeatherScreen(
                     CircularProgressIndicator()
                 }
             }
+
+            // NOUVEAU : avertissement si la position utilisateur n'a pas pu etre utilisee
+            // (position introuvable / permission refusee) -> meteo du campus affichee a la place.
+            ErrorBanner(error = locationWarning, modifier = Modifier.padding(12.dp))
 
             ErrorBanner(error = error, modifier = Modifier.padding(12.dp))
 

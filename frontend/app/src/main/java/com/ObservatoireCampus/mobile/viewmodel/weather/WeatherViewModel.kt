@@ -19,6 +19,7 @@ import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
 // Coordonnees fixes du campus (memes que le cache backend cote Spring).
+// Utilisees en fallback si la position de l'utilisateur est indisponible.
 private const val CAMPUS_LAT = 44.808
 private const val CAMPUS_LON = -0.595
 
@@ -28,6 +29,8 @@ private const val CAMPUS_LON = -0.595
  * - hourlyPoints : 24 points (icone + temperature) pour la date selectionnee -> alimente la courbe
  * - airQualityDaily : moyenne du jour (affichee par defaut)
  * - airQualityHour : valeurs de l'heure cliquee (affichees des qu'une heure est selectionnee)
+ * - locationWarning : non-null si la position utilisateur n'a pas pu etre utilisee
+ *   (position introuvable / refusee) -> l'ecran retombe alors sur les coordonnees du campus.
  */
 class WeatherViewModel(
     private val weatherRepository: WeatherRepository,
@@ -63,15 +66,72 @@ class WeatherViewModel(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
-    fun loadInitial() {
+    // NOUVEAU : message affiche quand on retombe sur le campus par defaut
+    private val _locationWarning = MutableStateFlow<String?>(null)
+    val locationWarning: StateFlow<String?> = _locationWarning.asStateFlow()
+
+    // NOUVEAU : coordonnees actuellement utilisees pour tous les appels (user ou campus)
+    private var activeLat: Double = CAMPUS_LAT
+    private var activeLon: Double = CAMPUS_LON
+
+    // NOUVEAU : vrai si on utilise reellement la position de l'utilisateur
+    private var usingUserLocation: Boolean = false
+
+    /**
+     * Point d'entree de l'ecran Meteo.
+     * @param userLat / userLon : position de l'utilisateur (ex: LocationViewModel.userLocation).
+     *        Si null (position non trouvee / permission refusee) -> fallback campus + warning.
+     */
+    fun loadInitial(userLat: Double? = null, userLon: Double? = null) {
+        if (userLat != null && userLon != null) {
+            activeLat = userLat
+            activeLon = userLon
+            usingUserLocation = true
+            _locationWarning.value = null
+        } else {
+            activeLat = CAMPUS_LAT
+            activeLon = CAMPUS_LON
+            usingUserLocation = false
+            _locationWarning.value = "Position non trouvée. Météo du campus affichée par défaut."
+        }
+
+        loadCurrentWeather()
+        selectDate(LocalDate.now())
+    }
+
+    private fun loadCurrentWeather() {
         viewModelScope.launch {
             try {
-                _currentWeather.value = weatherRepository.getCurrent()
+                _currentWeather.value = if (usingUserLocation) {
+                    // Position user -> on demande la meteo precise a l'heure actuelle
+                    val now = LocalDate.now()
+                    val nowTime = LocalTime.now()
+                    val result = weatherRepository.getWeatherAt(
+                        WeatherRequestDto(
+                            latitude = activeLat,
+                            longitude = activeLon,
+                            date = now.format(dateFormatter),
+                            time = String.format("%02d:00:00", nowTime.hour)
+                        )
+                    )
+                    CurrentWeatherDto(
+                        temperature = result.temperature,
+                        windspeed = null,
+                        winddirection = null,
+                        weathercode = result.weathercode,
+                        description = result.description,
+                        icon = result.icon,
+                        time = result.time,
+                        isDay = null
+                    )
+                } else {
+                    // Campus par defaut -> endpoint cache rapide
+                    weatherRepository.getCurrent()
+                }
             } catch (e: Exception) {
                 _error.value = "Meteo actuelle indisponible"
             }
         }
-        selectDate(LocalDate.now())
     }
 
     /** Fleches du haut : jour precedent / suivant. */
@@ -104,19 +164,20 @@ class WeatherViewModel(
             _loading.value = true
             _error.value = null
             try {
-                _hourlyPoints.value = if (date == LocalDate.now()) {
-                    // Aujourd'hui : deja dispo en un seul appel (cache backend, 24 points).
+                _hourlyPoints.value = if (!usingUserLocation && date == LocalDate.now()) {
+                    // Campus + aujourd'hui : deja dispo en un seul appel (cache backend, 24 points).
                     weatherRepository.getHourlyToday()
                 } else {
-                    // Autre jour : pas d'endpoint "hourly" dedie cote backend pour une date
-                    // arbitraire -> on reconstruit les 24 points via /weather/at (appels paralleles).
+                    // Position utilisateur, ou autre jour : pas d'endpoint "hourly" dedie pour
+                    // des coordonnees/date arbitraires -> on reconstruit les 24 points via
+                    // /weather/at (appels paralleles) avec les coordonnees actives.
                     (0..23).map { hour ->
                         async {
                             try {
                                 val result = weatherRepository.getWeatherAt(
                                     WeatherRequestDto(
-                                        latitude = CAMPUS_LAT,
-                                        longitude = CAMPUS_LON,
+                                        latitude = activeLat,
+                                        longitude = activeLon,
                                         date = date.format(dateFormatter),
                                         time = String.format("%02d:00:00", hour)
                                     )
@@ -150,8 +211,8 @@ class WeatherViewModel(
             _airQualityDaily.value = try {
                 airQualityRepository.getAirQualityAt(
                     WeatherRequestDto(
-                        latitude = CAMPUS_LAT,
-                        longitude = CAMPUS_LON,
+                        latitude = activeLat,
+                        longitude = activeLon,
                         date = date.format(dateFormatter)
                     )
                 )
@@ -166,8 +227,8 @@ class WeatherViewModel(
             _airQualityHour.value = try {
                 airQualityRepository.getAirQualityAt(
                     WeatherRequestDto(
-                        latitude = CAMPUS_LAT,
-                        longitude = CAMPUS_LON,
+                        latitude = activeLat,
+                        longitude = activeLon,
                         date = date.format(dateFormatter),
                         time = String.format("%02d:00:00", hourIndex)
                     )
