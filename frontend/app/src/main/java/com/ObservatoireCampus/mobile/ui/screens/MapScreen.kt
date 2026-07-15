@@ -16,6 +16,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ObservatoireCampus.mobile.repository.ParkingRepository
 import com.ObservatoireCampus.mobile.repository.station.StationTBRepository
 import com.ObservatoireCampus.mobile.repository.station.StationVRepository
+import com.ObservatoireCampus.mobile.repository.station.StationTerRepository
 import com.ObservatoireCampus.mobile.ui.components.CampusButton
 import com.ObservatoireCampus.mobile.ui.components.LocationButton
 import com.ObservatoireCampus.mobile.ui.components.CampusMap
@@ -27,6 +28,7 @@ import com.ObservatoireCampus.mobile.ui.components.ZoomControls
 import com.ObservatoireCampus.mobile.ui.components.weather.CurrentWeatherBadge
 import com.ObservatoireCampus.mobile.ui.components.station.StationTBBubble
 import com.ObservatoireCampus.mobile.ui.components.station.StationVBubble
+import com.ObservatoireCampus.mobile.ui.components.station.StationTerBubble
 import com.ObservatoireCampus.mobile.ui.components.parking.ParkingBubble
 import com.ObservatoireCampus.mobile.ui.components.location.LocationBubble
 import com.ObservatoireCampus.mobile.ui.components.location.upsertUserLocationMarker
@@ -39,6 +41,8 @@ import com.ObservatoireCampus.mobile.viewmodel.station.StationTBViewModel
 import com.ObservatoireCampus.mobile.viewmodel.station.StationTBViewModelFactory
 import com.ObservatoireCampus.mobile.viewmodel.station.StationVViewModel
 import com.ObservatoireCampus.mobile.viewmodel.station.StationVViewModelFactory
+import com.ObservatoireCampus.mobile.viewmodel.station.StationTerViewModel
+import com.ObservatoireCampus.mobile.viewmodel.station.StationTerViewModelFactory
 import com.ObservatoireCampus.mobile.viewmodel.freevehicle.FreeVehicleViewModel
 import com.ObservatoireCampus.mobile.viewmodel.freevehicle.FreeVehicleViewModelFactory
 import com.ObservatoireCampus.mobile.repository.freevehicle.FreeVehicleRepository
@@ -98,6 +102,18 @@ fun MapScreen(
     val stationVError by stationVViewModel.error.collectAsState()
     var stationVExpanded by remember { mutableStateOf(false) }
 
+    // TER
+    val stationTerViewModel: StationTerViewModel = viewModel(
+        factory = StationTerViewModelFactory(StationTerRepository())
+    )
+    val stationTerLayers by stationTerViewModel.layers.collectAsState()
+    val visibleStationsTer by stationTerViewModel.visiblePositions.collectAsState()
+    val selectedStationTer by stationTerViewModel.selectedStation.collectAsState()
+    val passagesTer by stationTerViewModel.passages.collectAsState()
+    val bubbleLoadingTer by stationTerViewModel.bubbleLoading.collectAsState()
+    val stationTerError by stationTerViewModel.error.collectAsState()
+    var stationTerExpanded by remember { mutableStateOf(false) }
+
     // Free vehicle
     val freeVehicleViewModel: FreeVehicleViewModel = viewModel(
         factory = FreeVehicleViewModelFactory(FreeVehicleRepository())
@@ -122,7 +138,9 @@ fun MapScreen(
 
     // Une seule zone d'erreur pour tout l'ecran : on combine les sources
     val combinedError =
-        listOfNotNull(campusError, parkingError, stationTBError, stationVError, freeVehicleError)
+        listOfNotNull(
+            campusError, parkingError, stationTBError, stationVError, stationTerError, freeVehicleError
+        )
             .takeIf { it.isNotEmpty() }
             ?.joinToString(" | ")
 
@@ -131,7 +149,7 @@ fun MapScreen(
     var mapView by remember { mutableStateOf<MapView?>(null) }
     var showCampus by remember { mutableStateOf(false) }
 
-    // NOUVEAU : référence du marqueur "Ma position" pour le déplacer sans le recréer
+    // NOUVEAU : reference du marqueur "Ma position" pour le deplacer sans le recreer
     var userLocationMarker by remember { mutableStateOf<Marker?>(null) }
 
     LaunchedEffect(Unit) {
@@ -139,10 +157,11 @@ fun MapScreen(
         parkingViewModel.loadParking()
         stationTBViewModel.loadStations()
         stationVViewModel.loadStations()
+        stationTerViewModel.loadStations()
         freeVehicleViewModel.loadStations()
     }
 
-    // NOUVEAU : dès qu'on a une position ET que la MapView est prête, on dessine/déplace le marqueur.
+    // NOUVEAU : des qu'on a une position ET que la MapView est prete, on dessine/deplace le marqueur.
     // Si userLocation redevient null (clic sur "clear"), on retire le marqueur de la carte.
     LaunchedEffect(userLocation, mapView) {
         val currentMapView = mapView ?: return@LaunchedEffect
@@ -155,7 +174,7 @@ fun MapScreen(
                 point = point,
                 onClick = { locationViewModel.onMarkerClicked() }
             )
-            // On centre ET on zoome sur la position à chaque nouveau fix GPS
+            // On centre ET on zoome sur la position a chaque nouveau fix GPS
             currentMapView.controller.setZoom(18.0)
             currentMapView.controller.animateTo(point)
         } else if (userLocationMarker != null) {
@@ -186,6 +205,12 @@ fun MapScreen(
                 onStationVExpandToggle = { stationVExpanded = !stationVExpanded },
                 onStationVMasterToggle = { stationVViewModel.toggleMaster() },
                 onStationVItemToggle = { key -> stationVViewModel.toggleType(key) },
+                stationTerLayers = stationTerLayers,
+                stationTerMasterActive = stationTerViewModel.masterActive,
+                stationTerExpanded = stationTerExpanded,
+                onStationTerExpandToggle = { stationTerExpanded = !stationTerExpanded },
+                onStationTerMasterToggle = { stationTerViewModel.toggleMaster() },
+                onStationTerItemToggle = { key -> stationTerViewModel.toggleType(key) },
                 freeVehicleLayers = freeVehicleLayers,
                 freeVehicleMasterActive = freeVehicleViewModel.masterActive,
                 freeVehicleExpanded = freeVehicleExpanded,
@@ -214,6 +239,8 @@ fun MapScreen(
                 onStationTBClick = { stationTBViewModel.onStationClicked(it) },
                 stationVList = visibleStationsV,
                 onStationVClick = { stationVViewModel.onStationClicked(it) },
+                stationTerList = visibleStationsTer,
+                onStationTerClick = { stationTerViewModel.onStationClicked(it) },
                 freeVehicleList = visibleFreeVehicles,
                 onFreeVehicleClick = { freeVehicleViewModel.onVehicleClicked(it.bikeId) },
                 onMapReady = { mapView = it },
@@ -292,6 +319,16 @@ fun MapScreen(
                     detail = selectedStationVDetail,
                     loading = bubbleLoadingV,
                     onClose = { stationVViewModel.closeBubble() },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 32.dp, start = 16.dp, end = 16.dp)
+                )
+            } else if (selectedStationTer != null) {
+                StationTerBubble(
+                    station = selectedStationTer!!,
+                    passages = passagesTer,
+                    loading = bubbleLoadingTer,
+                    onClose = { stationTerViewModel.closeBubble() },
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .padding(bottom = 32.dp, start = 16.dp, end = 16.dp)

@@ -18,6 +18,7 @@ import com.ObservatoireCampus.mobile.ui.components.layers.freevehicle.FreeVehicl
 import com.ObservatoireCampus.mobile.ui.components.layers.parking.ParkingDrawerSection
 import com.ObservatoireCampus.mobile.ui.components.layers.station.StationTBDrawerSection
 import com.ObservatoireCampus.mobile.ui.components.layers.station.StationVDrawerSection
+import com.ObservatoireCampus.mobile.ui.components.layers.station.StationTerDrawerSection
 import com.ObservatoireCampus.mobile.ui.theme.ObcampusPrimary
 import com.ObservatoireCampus.mobile.ui.theme.ObcampusSecondary
 import androidx.compose.foundation.clickable
@@ -52,6 +53,12 @@ fun DrawerMenu(
     onStationVExpandToggle: () -> Unit,
     onStationVMasterToggle: () -> Unit,
     onStationVItemToggle: (String) -> Unit,
+    stationTerLayers: List<LayerItemUiState>,
+    stationTerMasterActive: Boolean,
+    stationTerExpanded: Boolean,
+    onStationTerExpandToggle: () -> Unit,
+    onStationTerMasterToggle: () -> Unit,
+    onStationTerItemToggle: (String) -> Unit,
     freeVehicleLayers: List<LayerItemUiState>,
     freeVehicleMasterActive: Boolean,
     freeVehicleExpanded: Boolean,
@@ -125,6 +132,16 @@ fun DrawerMenu(
             onItemToggle = onStationVItemToggle
         )
 
+        // TER - layer dynamique
+        StationTerDrawerSection(
+            items = stationTerLayers,
+            masterActive = stationTerMasterActive,
+            expanded = stationTerExpanded,
+            onExpandToggle = onStationTerExpandToggle,
+            onMasterToggle = onStationTerMasterToggle,
+            onItemToggle = onStationTerItemToggle
+        )
+
         // LIBRE-SERVICE - layer dynamique
         FreeVehicleDrawerSection(
             items = freeVehicleLayers,
@@ -154,12 +171,12 @@ fun DrawerMenu(
                         }
                     }
                     .padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically, // Aligne verticalement l'icône, le texte et l'œil au milieu
+                verticalAlignment = Alignment.CenterVertically, // Aligne verticalement l'icone, le texte et l'oeil au milieu
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f).padding(end = 8.dp) // Repousse l'œil tout à la fin
+                    modifier = Modifier.weight(1f).padding(end = 8.dp) // Repousse l'oeil tout a la fin
                 ) {
                     Icon(
                         imageVector = option.icon,
@@ -170,7 +187,7 @@ fun DrawerMenu(
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
                         text = option.label,
-                        maxLines = 2, // Autorise le nom à s'afficher sur deux lignes maximum
+                        maxLines = 2, // Autorise le nom a s'afficher sur deux lignes maximum
                         modifier = Modifier.weight(1f) // Prend le maximum de place et pousse le reste vers le bout
                     )
                 }
@@ -184,7 +201,7 @@ fun DrawerMenu(
                             }
                             onOptionClick(option.label, newState)
                         },
-                        modifier = Modifier.size(28.dp) // Taille fixe pour l'œil
+                        modifier = Modifier.size(28.dp) // Taille fixe pour l'oeil
                     ) {
                         Icon(
                             imageVector = if (isActive) Icons.Default.Visibility
@@ -193,7 +210,7 @@ fun DrawerMenu(
                         )
                     }
                 } else {
-                    // Spacer pour maintenir l'alignement même si l'icône météo n'a pas d'œil
+                    // Spacer pour maintenir l'alignement meme si l'icone meteo n'a pas d'oeil
                     Spacer(modifier = Modifier.width(28.dp))
                 }
             }

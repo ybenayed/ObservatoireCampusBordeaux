@@ -12,6 +12,7 @@ import com.ObservatoireCampus.mobile.model.CampusDto
 import com.ObservatoireCampus.mobile.model.parking.ParkingPositionDto
 import com.ObservatoireCampus.mobile.model.station.StationTBPositionDto
 import com.ObservatoireCampus.mobile.model.station.StationVPositionDto
+import com.ObservatoireCampus.mobile.model.station.StationTerPositionDto
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
@@ -31,7 +32,7 @@ import com.ObservatoireCampus.mobile.ui.components.layers.freevehicle.FreeVehicl
 import android.graphics.Path
 /**
  * Carte OpenStreetMap. Dessine les polygones des campus recus,
- * les marqueurs de parking, bus/tram et velo (filtres par layers actifs,
+ * les marqueurs de parking, bus/tram, velo et TER (filtres par layers actifs,
  * passes deja filtres par MapScreen).
  * onMapReady renvoie l'instance MapView au parent (MapScreen) pour
  * pouvoir piloter le zoom et les deplacements depuis l'exterieur.
@@ -47,6 +48,8 @@ fun CampusMap(
     onStationTBClick: (StationTBPositionDto) -> Unit = {},
     stationVList: List<StationVPositionDto> = emptyList(),
     onStationVClick: (StationVPositionDto) -> Unit = {},
+    stationTerList: List<StationTerPositionDto> = emptyList(),
+    onStationTerClick: (StationTerPositionDto) -> Unit = {},
     freeVehicleList: List<FreeVehiclePositionDto> = emptyList(),
     onFreeVehicleClick: (FreeVehiclePositionDto) -> Unit = {},
     onMapReady: (MapView) -> Unit,
@@ -54,7 +57,9 @@ fun CampusMap(
 ) {
     val mapViewRef = remember { mutableStateOf<MapView?>(null) }
 
-    LaunchedEffect(campusList, showPolygons, parkingList, stationTBList, stationVList, freeVehicleList) {
+    LaunchedEffect(
+        campusList, showPolygons, parkingList, stationTBList, stationVList, stationTerList, freeVehicleList
+    ) {
         val mapView = mapViewRef.value ?: return@LaunchedEffect
         mapView.overlays.clear()
         if (showPolygons && campusList.isNotEmpty()) {
@@ -63,6 +68,7 @@ fun CampusMap(
         drawParkingMarkers(mapView, parkingList, onParkingClick)
         drawStationTBMarkers(mapView, stationTBList, onStationTBClick)
         drawStationVMarkers(mapView, stationVList, onStationVClick)
+        drawStationTerMarkers(mapView, stationTerList, onStationTerClick)
         drawFreeVehicleMarkers(mapView, freeVehicleList, onFreeVehicleClick)
         mapView.invalidate()
     }
@@ -185,6 +191,31 @@ private fun drawStationVMarkers(
                 context = context,
                 colorArgb = StationTypeStyle.color("VELO").toArgb(),
                 letter = StationTypeStyle.markerLetter("VELO")
+            )
+            setOnMarkerClickListener { _, _ -> onClick(station); true }
+        }
+        mapView.overlays.add(marker)
+    }
+}
+
+// Marqueurs TER (gares SNCF) - clic declenche la bulle custom
+private fun drawStationTerMarkers(
+    mapView: MapView,
+    stations: List<StationTerPositionDto>,
+    onClick: (StationTerPositionDto) -> Unit
+) {
+    val context = mapView.context
+
+    stations.forEach { station ->
+        val marker = Marker(mapView).apply {
+            position = GeoPoint(station.latitude, station.longitude)
+            title = station.nom
+            snippet = StationTypeStyle.label("TER")
+            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
+            icon = createMarkerIcon(
+                context = context,
+                colorArgb = StationTypeStyle.color("TER").toArgb(),
+                letter = StationTypeStyle.markerLetter("TER")
             )
             setOnMarkerClickListener { _, _ -> onClick(station); true }
         }
