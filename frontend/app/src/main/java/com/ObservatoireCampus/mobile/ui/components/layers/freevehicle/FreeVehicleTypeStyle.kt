@@ -7,14 +7,14 @@ import androidx.compose.material.icons.filled.ElectricScooter
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.ObservatoireCampus.mobile.viewmodel.LanguageViewModel
 
-// vehicleTypeId vient directement du backend (GBFS RideYeGo) : yego_scooter, yego_bike, yego_kick
 object FreeVehicleTypeStyle {
 
     fun color(vehicleTypeId: String): Color = when (vehicleTypeId) {
-        "yego_scooter" -> Color(0xFF8E24AA) // violet - scooter/moped
-        "yego_bike" -> Color(0xFF2E7D32)    // vert - velo
-        "yego_kick" -> Color(0xFF0288D1)    // bleu - trottinette
+        "yego_scooter" -> Color(0xFF8E24AA)
+        "yego_bike" -> Color(0xFF2E7D32)
+        "yego_kick" -> Color(0xFF0288D1)
         else -> Color.Gray
     }
 
@@ -25,10 +25,13 @@ object FreeVehicleTypeStyle {
         else -> Icons.Default.Place
     }
 
-    fun label(vehicleTypeId: String): String = when (vehicleTypeId) {
-        "yego_scooter" -> "Scooter électrique"
-        "yego_bike" -> "Vélo électrique"
-        "yego_kick" -> "Trottinette électrique"
-        else -> vehicleTypeId
+    suspend fun label(vehicleTypeId: String, languageViewModel: LanguageViewModel): String {
+        val rawLabel = when (vehicleTypeId) {
+            "yego_scooter" -> "Scooter électrique"
+            "yego_bike" -> "Vélo électrique"
+            "yego_kick" -> "Trottinette électrique"
+            else -> vehicleTypeId
+        }
+        return languageViewModel.translate(rawLabel)
     }
 }

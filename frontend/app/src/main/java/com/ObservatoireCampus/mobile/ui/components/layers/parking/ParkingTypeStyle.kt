@@ -10,10 +10,8 @@ import androidx.compose.material.icons.filled.Terrain
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.ObservatoireCampus.mobile.viewmodel.LanguageViewModel // AJOUT
 
-/**
- * Style visuel par taType (tarification) : utilise dans le drawer (pastille + icone + label).
- */
 object ParkingTypeStyle {
 
     fun color(taType: String): Color = when {
@@ -30,16 +28,19 @@ object ParkingTypeStyle {
         else -> Icons.Default.DirectionsCar
     }
 
-    fun label(taType: String): String = when {
-        taType.contains("PARC_RELAIS") -> "Parc relais"
-        taType.contains("GRATUIT") -> "Gratuit"
-        taType.contains("HORAIRE") -> "Payant horaire"
-        taType.contains("ABONNE") -> "Abonnes"
-        else -> taType.replace("_", " ").lowercase()
-            .replaceFirstChar { it.uppercase() }
+    // AJOUT de LanguageViewModel pour traduire dynamiquement
+    suspend fun label(taType: String, languageViewModel: LanguageViewModel): String {
+        val key = when {
+            taType.contains("PARC_RELAIS") -> "Parc relais"
+            taType.contains("GRATUIT") -> "Gratuit"
+            taType.contains("HORAIRE") -> "Payant horaire"
+            taType.contains("ABONNE") -> "Abonnés"
+            else -> taType.replace("_", " ").lowercase()
+                .replaceFirstChar { it.uppercase() }
+        }
+        return languageViewModel.translate(key)
     }
 
-    /** Lettre affichee dans le rond du marqueur sur la carte. */
     fun markerLetter(taType: String): String = when {
         taType.contains("PARC_RELAIS") -> "R"
         taType.contains("GRATUIT") -> "G"
@@ -56,11 +57,15 @@ object ParkingTypeStyle {
         else -> Icons.Default.LocalParking
     }
 
-    fun structureLabel(type: String?): String = when (type) {
-        "SILO" -> "Silo"
-        "ENTERRE" -> "Souterrain"
-        "SURFACE" -> "Surface"
-        "MIXTE" -> "Mixte"
-        else -> "Parking"
+    // AJOUT de LanguageViewModel pour traduire dynamiquement
+    suspend fun structureLabel(type: String?, languageViewModel: LanguageViewModel): String {
+        val key = when (type) {
+            "SILO" -> "Silo"
+            "ENTERRE" -> "Souterrain"
+            "SURFACE" -> "Surface"
+            "MIXTE" -> "Mixte"
+            else -> "Parking"
+        }
+        return languageViewModel.translate(key)
     }
 }

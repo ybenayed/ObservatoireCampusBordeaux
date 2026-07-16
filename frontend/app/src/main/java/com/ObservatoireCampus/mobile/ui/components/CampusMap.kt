@@ -1,47 +1,53 @@
 package com.ObservatoireCampus.mobile.ui.components
 
 import android.annotation.SuppressLint
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.drawable.BitmapDrawable
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.viewinterop.AndroidView
 import com.ObservatoireCampus.mobile.model.CampusDto
+import com.ObservatoireCampus.mobile.model.freevehicle.FreeVehiclePositionDto
 import com.ObservatoireCampus.mobile.model.parking.ParkingPositionDto
 import com.ObservatoireCampus.mobile.model.station.StationTBPositionDto
-import com.ObservatoireCampus.mobile.model.station.StationVPositionDto
 import com.ObservatoireCampus.mobile.model.station.StationTerPositionDto
+import com.ObservatoireCampus.mobile.model.station.StationVPositionDto
+import com.ObservatoireCampus.mobile.ui.components.layers.freevehicle.FreeVehicleTypeStyle
+import com.ObservatoireCampus.mobile.ui.components.layers.parking.ParkingTypeStyle
+import com.ObservatoireCampus.mobile.ui.components.layers.station.StationTypeStyle
+import com.ObservatoireCampus.mobile.viewmodel.LanguageViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polygon
-import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.drawable.BitmapDrawable
-import androidx.compose.ui.graphics.toArgb
-import com.ObservatoireCampus.mobile.ui.components.layers.parking.ParkingTypeStyle
-import com.ObservatoireCampus.mobile.ui.components.layers.station.StationTypeStyle
-import com.ObservatoireCampus.mobile.model.freevehicle.FreeVehiclePositionDto
-import com.ObservatoireCampus.mobile.ui.components.layers.freevehicle.FreeVehicleTypeStyle
-import android.graphics.Path
+
 /**
- * Carte OpenStreetMap. Dessine les polygones des campus recus,
- * les marqueurs de parking, bus/tram, velo et TER (filtres par layers actifs,
- * passes deja filtres par MapScreen).
+ * Carte OpenStreetMap. Dessine les polygones des campus reçus,
+ * les marqueurs de parking, bus/tram, vélo et TER (filtrés par layers actifs,
+ * passés déjà filtrés par MapScreen).
  * onMapReady renvoie l'instance MapView au parent (MapScreen) pour
- * pouvoir piloter le zoom et les deplacements depuis l'exterieur.
+ * pouvoir piloter le zoom et les déplacements depuis l'extérieur.
  */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun CampusMap(
     campusList: List<CampusDto>,
     showPolygons: Boolean,
+    languageViewModel: LanguageViewModel,
     parkingList: List<ParkingPositionDto> = emptyList(),
     onParkingClick: (ParkingPositionDto) -> Unit = {},
     stationTBList: List<StationTBPositionDto> = emptyList(),
@@ -56,23 +62,28 @@ fun CampusMap(
     modifier: Modifier = Modifier
 ) {
     val mapViewRef = remember { mutableStateOf<MapView?>(null) }
+    // Utilisation d'un CoroutineScope Compose officiel et sécurisé
+    val coroutineScope = rememberCoroutineScope()
 
+    // On s'assure de repeindre correctement dès que le contenu ou la langue change
     LaunchedEffect(
-        campusList, showPolygons, parkingList, stationTBList, stationVList, stationTerList, freeVehicleList
+        campusList, showPolygons, parkingList, stationTBList, stationVList, stationTerList, freeVehicleList, languageViewModel
     ) {
         val mapView = mapViewRef.value ?: return@LaunchedEffect
         mapView.overlays.clear()
+
+        // Redessine l'ensemble avec les nouveaux titres traduits
         if (showPolygons && campusList.isNotEmpty()) {
             drawCampusPolygons(mapView, campusList)
         }
-        drawParkingMarkers(mapView, parkingList, onParkingClick)
-        drawStationTBMarkers(mapView, stationTBList, onStationTBClick)
-        drawStationVMarkers(mapView, stationVList, onStationVClick)
-        drawStationTerMarkers(mapView, stationTerList, onStationTerClick)
+        drawParkingMarkers(mapView, parkingList, languageViewModel, coroutineScope, onParkingClick)
+        drawStationTBMarkers(mapView, stationTBList, languageViewModel, coroutineScope, onStationTBClick)
+        drawStationVMarkers(mapView, stationVList, languageViewModel, coroutineScope, onStationVClick)
+        drawStationTerMarkers(mapView, stationTerList, languageViewModel, coroutineScope, onStationTerClick)
         drawFreeVehicleMarkers(mapView, freeVehicleList, onFreeVehicleClick)
+
         mapView.invalidate()
     }
-
 
     AndroidView(
         modifier = modifier.fillMaxSize(),
@@ -124,6 +135,8 @@ private fun drawCampusPolygons(mapView: MapView, campusList: List<CampusDto>) {
 private fun drawParkingMarkers(
     mapView: MapView,
     parkingList: List<ParkingPositionDto>,
+    languageViewModel: LanguageViewModel,
+    coroutineScope: CoroutineScope,
     onClick: (ParkingPositionDto) -> Unit
 ) {
     val context = mapView.context
@@ -135,7 +148,8 @@ private fun drawParkingMarkers(
         val marker = Marker(mapView).apply {
             position = GeoPoint(lat, lon)
             title = parking.nom
-            snippet = ParkingTypeStyle.label(parking.taType)
+            snippet = parking.taType // Valeur par défaut temporaire
+
             setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
             icon = createMarkerIcon(
                 context = context,
@@ -144,14 +158,26 @@ private fun drawParkingMarkers(
             )
             setOnMarkerClickListener { _, _ -> onClick(parking); true }
         }
+
+        // Lancement asynchrone de la traduction via le scope Compose transmis
+        coroutineScope.launch {
+            val translatedLabel = ParkingTypeStyle.label(parking.taType, languageViewModel)
+            marker.snippet = translatedLabel
+            if (marker.isInfoWindowShown) {
+                marker.closeInfoWindow()
+                marker.showInfoWindow()
+            }
+        }
+
         mapView.overlays.add(marker)
     }
 }
 
-// Marqueurs Bus/Tram - clic declenche la bulle custom (pas la popup osmdroid par defaut)
 private fun drawStationTBMarkers(
     mapView: MapView,
     stations: List<StationTBPositionDto>,
+    languageViewModel: LanguageViewModel,
+    coroutineScope: CoroutineScope,
     onClick: (StationTBPositionDto) -> Unit
 ) {
     val context = mapView.context
@@ -160,7 +186,7 @@ private fun drawStationTBMarkers(
         val marker = Marker(mapView).apply {
             position = GeoPoint(station.latitude, station.longitude)
             title = station.nom
-            snippet = StationTypeStyle.label(station.mode)
+            snippet = station.mode
             setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
             icon = createMarkerIcon(
                 context = context,
@@ -169,14 +195,25 @@ private fun drawStationTBMarkers(
             )
             setOnMarkerClickListener { _, _ -> onClick(station); true }
         }
+
+        coroutineScope.launch {
+            val translatedLabel = StationTypeStyle.label(station.mode, languageViewModel)
+            marker.snippet = translatedLabel
+            if (marker.isInfoWindowShown) {
+                marker.closeInfoWindow()
+                marker.showInfoWindow()
+            }
+        }
+
         mapView.overlays.add(marker)
     }
 }
 
-// Marqueurs Velo - clic declenche la bulle custom (statique + dynamique jointe)
 private fun drawStationVMarkers(
     mapView: MapView,
     stations: List<StationVPositionDto>,
+    languageViewModel: LanguageViewModel,
+    coroutineScope: CoroutineScope,
     onClick: (StationVPositionDto) -> Unit
 ) {
     val context = mapView.context
@@ -185,7 +222,7 @@ private fun drawStationVMarkers(
         val marker = Marker(mapView).apply {
             position = GeoPoint(station.latitude, station.longitude)
             title = station.nom
-            snippet = StationTypeStyle.label("VELO")
+            snippet = "VELO"
             setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
             icon = createMarkerIcon(
                 context = context,
@@ -194,14 +231,25 @@ private fun drawStationVMarkers(
             )
             setOnMarkerClickListener { _, _ -> onClick(station); true }
         }
+
+        coroutineScope.launch {
+            val translatedLabel = StationTypeStyle.label("VELO", languageViewModel)
+            marker.snippet = translatedLabel
+            if (marker.isInfoWindowShown) {
+                marker.closeInfoWindow()
+                marker.showInfoWindow()
+            }
+        }
+
         mapView.overlays.add(marker)
     }
 }
 
-// Marqueurs TER (gares SNCF) - clic declenche la bulle custom
 private fun drawStationTerMarkers(
     mapView: MapView,
     stations: List<StationTerPositionDto>,
+    languageViewModel: LanguageViewModel,
+    coroutineScope: CoroutineScope,
     onClick: (StationTerPositionDto) -> Unit
 ) {
     val context = mapView.context
@@ -210,7 +258,7 @@ private fun drawStationTerMarkers(
         val marker = Marker(mapView).apply {
             position = GeoPoint(station.latitude, station.longitude)
             title = station.nom
-            snippet = StationTypeStyle.label("TER")
+            snippet = "TER"
             setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
             icon = createMarkerIcon(
                 context = context,
@@ -219,6 +267,16 @@ private fun drawStationTerMarkers(
             )
             setOnMarkerClickListener { _, _ -> onClick(station); true }
         }
+
+        coroutineScope.launch {
+            val translatedLabel = StationTypeStyle.label("TER", languageViewModel)
+            marker.snippet = translatedLabel
+            if (marker.isInfoWindowShown) {
+                marker.closeInfoWindow()
+                marker.showInfoWindow()
+            }
+        }
+
         mapView.overlays.add(marker)
     }
 }
@@ -261,7 +319,6 @@ private fun createMarkerIcon(
     return BitmapDrawable(context.resources, bitmap)
 }
 
-// Marqueurs Libre-service (scooter/velo/trottinette) - pin + glyphe, pas de cercle simple
 private fun drawFreeVehicleMarkers(
     mapView: MapView,
     vehicles: List<FreeVehiclePositionDto>,
@@ -273,13 +330,12 @@ private fun drawFreeVehicleMarkers(
             position = GeoPoint(vehicle.latitude, vehicle.longitude)
             setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
             icon = createVehicleMarkerIcon(context, FreeVehicleTypeStyle.color(vehicle.vehicleTypeId).toArgb(), vehicle.vehicleTypeId)
-            setOnMarkerClickListener { _, _ -> onClick(vehicle); true } // plus de showInfoWindow
+            setOnMarkerClickListener { _, _ -> onClick(vehicle); true }
         }
         mapView.overlays.add(marker)
     }
 }
 
-// Pin (goutte) avec pictogramme du vehicule dessine dedans - pas un simple cercle
 private fun createVehicleMarkerIcon(
     context: Context,
     colorArgb: Int,
@@ -292,15 +348,13 @@ private fun createVehicleMarkerIcon(
     val canvas = Canvas(bitmap)
     val w = sizePx.toFloat()
 
-    val pinPaint =
-        Paint(Paint.ANTI_ALIAS_FLAG).apply { color = colorArgb; style = Paint.Style.FILL }
+    val pinPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = colorArgb; style = Paint.Style.FILL }
     val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = android.graphics.Color.WHITE
         style = Paint.Style.STROKE
         strokeWidth = 2f * density
     }
 
-    // Forme "goutte" (pin de carte classique) au lieu d'un rond plein
     val cx = w / 2f
     val cy = w * 0.36f
     val r = w * 0.34f
@@ -314,7 +368,6 @@ private fun createVehicleMarkerIcon(
     canvas.drawPath(path, pinPaint)
     canvas.drawPath(path, borderPaint)
 
-    // Pictogramme blanc du vehicule (roues + cadre/guidon), different selon le type
     val glyphPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = android.graphics.Color.WHITE
         style = Paint.Style.STROKE
@@ -326,7 +379,6 @@ private fun createVehicleMarkerIcon(
 
     when (vehicleTypeId) {
         "yego_bike" -> {
-            // Velo : 2 roues identiques + cadre triangulaire
             val leftX = cx - w * 0.13f
             val rightX = cx + w * 0.13f
             canvas.drawCircle(leftX, wheelY, wheelR, glyphPaint)
@@ -337,7 +389,6 @@ private fun createVehicleMarkerIcon(
         }
 
         "yego_kick" -> {
-            // Trottinette : petites roues + plateforme + tige/guidon
             val leftX = cx - w * 0.1f
             val rightX = cx + w * 0.14f
             canvas.drawCircle(leftX, wheelY, wheelR * 0.8f, glyphPaint)
@@ -354,7 +405,6 @@ private fun createVehicleMarkerIcon(
         }
 
         else -> {
-            // Scooter/moped par defaut : 2 roues + assise + guidon avant
             val leftX = cx - w * 0.12f
             val rightX = cx + w * 0.12f
             canvas.drawCircle(leftX, wheelY, wheelR, glyphPaint)

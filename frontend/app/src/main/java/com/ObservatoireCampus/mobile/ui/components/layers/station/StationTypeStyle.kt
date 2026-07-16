@@ -8,14 +8,14 @@ import androidx.compose.material.icons.filled.Tram
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material.icons.filled.Train
-
+import com.ObservatoireCampus.mobile.viewmodel.LanguageViewModel // AJOUT
 
 object StationTypeStyle {
     fun color(key: String): Color = when (key) {
         "TRAM" -> Color(0xFF1976D2)
         "BUS" -> Color(0xFFEF6C00)
         "VELO" -> Color(0xFF2E7D32)
-        "TER" -> Color(0xFF6A1B9A)   // violet SNCF
+        "TER" -> Color(0xFF6A1B9A)
         else -> Color.Gray
     }
 
@@ -27,19 +27,24 @@ object StationTypeStyle {
         else -> Icons.Default.Place
     }
 
-    fun label(key: String): String = when (key) {
-        "TRAM" -> "Tram"
-        "BUS" -> "Bus"
-        "VELO" -> "Velo"
-        "TER" -> "TER"
-        else -> key
+    // MODIFICATION : suspend et traduction dynamique via le ViewModel
+
+    suspend fun label(key: String, languageViewModel: LanguageViewModel): String {
+        val rawLabel = when (key) {
+            "TRAM" -> "Tram"
+            "BUS" -> "Bus"
+            "VELO" -> "Vélo" // <-- Correction ici : "Vélo" avec accent pour correspondre au dictionnaire standard
+            "TER" -> "TER"
+            else -> key
+        }
+        return languageViewModel.translate(rawLabel)
     }
 
     fun markerLetter(key: String): String = when (key) {
         "TRAM" -> "T"
         "BUS" -> "B"
         "VELO" -> "V"
-        "TER" -> "R"   // R pour "Rail" (T est déjà pris par Tram)
+        "TER" -> "R"
         else -> "?"
     }
 }

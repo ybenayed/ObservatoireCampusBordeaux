@@ -60,18 +60,21 @@ class FreeVehicleViewModel(
         _selectedVehicleId.value = null
         _selectedVehicle.value = null
     }
-    // Chargement initial : types + comptage (statique, source de verite pour les libelles/couleurs)
+
+    // Chargement initial : types + comptage
     fun loadStations() {
         viewModelScope.launch {
             try {
                 val counts = repository.getTypesCount()
-                // on garde la visibilite actuelle si le layer existait deja (evite un reset au refresh)
+                // On garde la visibilité actuelle si le layer existait déjà
                 val previousVisibility = _layers.value.associate { it.key to it.visible }
 
                 _layers.value = counts.map { c ->
                     LayerItemUiState(
                         key = c.vehicleTypeId,
-                        label = FreeVehicleTypeStyleLabel(c),
+                        // MODIFICATION : On stocke la clé brute. L'UI (Compose) se chargera
+                        // de la traduire asynchronement à l'écran.
+                        label = c.vehicleTypeId,
                         count = c.count,
                         visible = previousVisibility[c.vehicleTypeId] ?: false
                     )
@@ -85,10 +88,7 @@ class FreeVehicleViewModel(
         }
     }
 
-    private fun FreeVehicleTypeStyleLabel(c: com.ObservatoireCampus.mobile.model.freevehicle.VehicleTypeCountDto): String =
-        com.ObservatoireCampus.mobile.ui.components.layers.freevehicle.FreeVehicleTypeStyle.label(c.vehicleTypeId)
-
-    // ─── REFRESH AUTOMATIQUE TOUTES LES 10 SECONDES (aligne sur le cache backend)
+    // REFRESH AUTOMATIQUE TOUTES LES 10 SECONDES
     private fun startAutoRefresh() {
         if (autoRefreshStarted) return
         autoRefreshStarted = true
@@ -106,7 +106,6 @@ class FreeVehicleViewModel(
             recomputeVisiblePositions()
         } catch (e: Exception) {
             _error.value = e.message
-            // on garde les anciennes positions affichees en cas d'erreur ponctuelle
         }
     }
 

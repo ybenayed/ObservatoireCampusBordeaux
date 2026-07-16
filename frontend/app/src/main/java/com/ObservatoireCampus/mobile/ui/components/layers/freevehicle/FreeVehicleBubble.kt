@@ -5,7 +5,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -16,14 +16,71 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ObservatoireCampus.mobile.ui.components.layers.freevehicle.FreeVehicleTypeStyle
 import com.ObservatoireCampus.mobile.model.freevehicle.FreeVehicleDetailDto
+import com.ObservatoireCampus.mobile.viewmodel.LanguageViewModel
+import com.ObservatoireCampus.mobile.viewmodel.AppLanguage
 
 @Composable
 fun FreeVehicleBubble(
     detail: FreeVehicleDetailDto?,
     loading: Boolean,
     onClose: () -> Unit,
+    languageViewModel: LanguageViewModel,
+    currentLanguage: AppLanguage,
     modifier: Modifier = Modifier
 ) {
+    // États traduits
+    var textHeaderLabel by remember { mutableStateOf("VÉHICULE EN LIBRE-SERVICE") }
+    var textVehicleFallback by remember { mutableStateOf("Véhicule") }
+    var textDispoLabel by remember { mutableStateOf("Disponibilité") }
+    var textAutonomieLabel by remember { mutableStateOf("Autonomie") }
+    var textDernierePosition by remember { mutableStateOf("Dernière position") }
+    var textFermer by remember { mutableStateOf("Fermer") }
+    var textIndisponible by remember { mutableStateOf("Informations indisponibles") }
+
+    // États dynamiques de statut
+    var textHorsService by remember { mutableStateOf("Hors service") }
+    var textReserve by remember { mutableStateOf("Réservé") }
+    var textDisponible by remember { mutableStateOf("Disponible") }
+
+    // États de temps relatifs
+    var textIlYa by remember { mutableStateOf("il y a") }
+    var textMin by remember { mutableStateOf("min") }
+    var textHeureAbbrev by remember { mutableStateOf("h") }
+    var textSecondesAbbrev by remember { mutableStateOf("s") }
+
+    // État local asynchrone pour stocker le libellé traduit du véhicule
+    var vehicleTypeLabel by remember { mutableStateOf("") }
+
+    LaunchedEffect(currentLanguage, detail) {
+        textHeaderLabel = languageViewModel.translate("VÉHICULE EN LIBRE-SERVICE")
+        textVehicleFallback = languageViewModel.translate("Véhicule")
+        textDispoLabel = languageViewModel.translate("Disponibilité")
+        textAutonomieLabel = languageViewModel.translate("Autonomie")
+        textDernierePosition = languageViewModel.translate("Dernière position")
+        textFermer = languageViewModel.translate("Fermer")
+        textIndisponible = languageViewModel.translate("Informations indisponibles")
+
+        textHorsService = languageViewModel.translate("Hors service")
+        textReserve = languageViewModel.translate("Réservé")
+        textDisponible = languageViewModel.translate("Disponible")
+
+        textIlYa = languageViewModel.translate("il y a")
+        textMin = languageViewModel.translate("min")
+        textHeureAbbrev = languageViewModel.translate("h")
+        textSecondesAbbrev = languageViewModel.translate("s")
+
+        // Appel asynchrone sécurisé de la fonction suspendue label
+        vehicleTypeLabel = if (detail != null) {
+            try {
+                FreeVehicleTypeStyle.label(detail.vehicleTypeId, languageViewModel)
+            } catch (e: Exception) {
+                textVehicleFallback
+            }
+        } else {
+            textVehicleFallback
+        }
+    }
+
     Card(
         modifier = modifier.widthIn(max = 340.dp),
         shape = RoundedCornerShape(20.dp),
@@ -32,7 +89,6 @@ fun FreeVehicleBubble(
     ) {
         Column(Modifier.padding(16.dp)) {
 
-            // EN-TÊTE : Design centré style TB avec la couleur Mauve
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -42,15 +98,15 @@ fun FreeVehicleBubble(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "VÉHICULE EN LIBRE-SERVICE",
+                        text = textHeaderLabel,
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFF7B1FA2), // Joli Mauve/Deep Purple pour le libre-service
+                        color = Color(0xFF7B1FA2),
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = detail?.let { FreeVehicleTypeStyle.label(it.vehicleTypeId) } ?: "Véhicule",
+                        text = vehicleTypeLabel.ifEmpty { textVehicleFallback },
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.ExtraBold,
                         textAlign = TextAlign.Center,
@@ -59,22 +115,17 @@ fun FreeVehicleBubble(
                     )
                 }
 
-                IconButton(
-                    onClick = onClose,
-                    modifier = Modifier.size(32.dp)
-                ) {
+                IconButton(onClick = onClose, modifier = Modifier.size(32.dp)) {
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = "Fermer",
+                        contentDescription = textFermer,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
 
-            // Séparateur horizontal identique à TB
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 1.dp)
 
-            // CORPS : Contenu épuré (sans identifiant ni tarif)
             when {
                 loading -> {
                     Box(
@@ -86,7 +137,7 @@ fun FreeVehicleBubble(
                 }
                 detail == null -> {
                     Text(
-                        text = "Informations indisponibles",
+                        text = textIndisponible,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
@@ -96,33 +147,30 @@ fun FreeVehicleBubble(
                 else -> {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
 
-                        // Couleurs d'état pour le statut
                         val (statusText, statusColor) = when {
-                            detail.isDisabled == true -> "Hors service" to Color(0xFFD32F2F)  // Rouge
-                            detail.isReserved == true -> "Réservé" to Color(0xFFFBC02D)       // Jaune/Ambre
-                            else -> "Disponible" to Color(0xFF4CAF50)                         // Vert
+                            detail.isDisabled == true -> textHorsService to Color(0xFFD32F2F)
+                            detail.isReserved == true -> textReserve to Color(0xFFFBC02D)
+                            else -> textDisponible to Color(0xFF4CAF50)
                         }
 
                         InfoRow(
-                            label = "Disponibilité",
+                            label = textDispoLabel,
                             value = statusText,
                             valueColor = statusColor
                         )
 
-                        // Autonomie
                         detail.currentRangeMeters?.let {
                             InfoRow(
-                                label = "Autonomie",
+                                label = textAutonomieLabel,
                                 value = "${it / 1000} km",
-                                valueColor = Color(0xFF1976D2) // Bleu
+                                valueColor = Color(0xFF1976D2)
                             )
                         }
 
-                        // Dernière mise à jour
                         detail.lastReported?.let {
                             InfoRow(
-                                label = "Dernière position",
-                                value = formatLastReported(it),
+                                label = textDernierePosition,
+                                value = formatLastReported(it, textIlYa, textMin, textHeureAbbrev, textSecondesAbbrev),
                                 valueColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                             )
                         }
@@ -158,15 +206,15 @@ private fun InfoRow(
     }
 }
 
-private fun formatLastReported(iso: String): String {
+private fun formatLastReported(iso: String, ilYa: String, min: String, h: String, s: String): String {
     return try {
         val instant = java.time.Instant.parse(iso)
         val now = java.time.Instant.now()
         val seconds = java.time.Duration.between(instant, now).seconds
         when {
-            seconds < 60 -> "il y a ${seconds}s"
-            seconds < 3600 -> "il y a ${seconds / 60} min"
-            else -> "il y a ${seconds / 3600} h"
+            seconds < 60 -> "$ilYa ${seconds}$s"
+            seconds < 3600 -> "$ilYa ${seconds / 60} $min"
+            else -> "$ilYa ${seconds / 3600} $h"
         }
     } catch (e: Exception) {
         iso

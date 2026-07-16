@@ -1,20 +1,11 @@
 package com.ObservatoireCampus.mobile.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -23,27 +14,15 @@ import com.ObservatoireCampus.mobile.repository.weather.AirQualityRepository
 import com.ObservatoireCampus.mobile.repository.weather.WeatherRepository
 import com.ObservatoireCampus.mobile.ui.components.ErrorBanner
 import com.ObservatoireCampus.mobile.ui.components.TopBar
-import com.ObservatoireCampus.mobile.ui.components.weather.AirQualityPanel
-import com.ObservatoireCampus.mobile.ui.components.weather.CurrentDateTimeHeader
-import com.ObservatoireCampus.mobile.ui.components.weather.HourlyWeatherScale
-import com.ObservatoireCampus.mobile.ui.components.weather.TemperatureCurve
-import com.ObservatoireCampus.mobile.ui.components.weather.WeatherBackgroundArt
-import com.ObservatoireCampus.mobile.ui.components.weather.WeekDayNavigator
+import com.ObservatoireCampus.mobile.ui.components.weather.*
 import com.ObservatoireCampus.mobile.ui.theme.ObcampusPrimary
+import com.ObservatoireCampus.mobile.viewmodel.LanguageViewModel
 import com.ObservatoireCampus.mobile.viewmodel.weather.WeatherViewModel
 import com.ObservatoireCampus.mobile.viewmodel.weather.WeatherViewModelFactory
 
-/**
- * Ecran Meteo complet. Assemble les petits composants de ui/components/weather :
- * nav du haut, illustration (agrandie, avec la vraie icone du moment), navigation par
- * jour, courbe blanche + echelle horaire, panneau qualite de l'air empile.
- *
- * userLat / userLon : position de l'utilisateur (recuperee sur MapScreen). Si null,
- * le ViewModel retombe automatiquement sur les coordonnees du campus et remonte
- * un message d'avertissement (locationWarning), affiche ici via ErrorBanner.
- */
 @Composable
 fun WeatherScreen(
+    languageViewModel: LanguageViewModel, // ViewModel de langue pour la gestion du multilingue
     onBack: () -> Unit,
     userLat: Double? = null,
     userLon: Double? = null,
@@ -61,14 +40,30 @@ fun WeatherScreen(
     val error by viewModel.error.collectAsState()
     val locationWarning by viewModel.locationWarning.collectAsState()
 
-    LaunchedEffect(Unit) { viewModel.loadInitial(userLat = userLat, userLon = userLon) }
+    // Suivi en temps réel de la langue sélectionnée
+    val currentLanguage by languageViewModel.currentLanguage.collectAsState()
 
-    // Icone de l'heure actuellement selectionnee, utilisee en grand dans le fond d'ecran
+    // Traduction dynamique des avertissements et erreurs
+    var translatedLocationWarning by remember { mutableStateOf<String?>(null) }
+    var translatedError by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        viewModel.loadInitial(userLat = userLat, userLon = userLon)
+    }
+
+    // Traduction automatique dès que l'état change
+    LaunchedEffect(currentLanguage, locationWarning, error) {
+        translatedLocationWarning = locationWarning?.let { languageViewModel.translate(it) }
+        translatedError = error?.let { languageViewModel.translate(it) }
+    }
+
     val currentIconUrl = hourlyPoints.getOrNull(selectedHourIndex)?.icon
 
     Column(modifier = Modifier.fillMaxSize()) {
 
+        // TopBar connectée au ViewModel multilingue
         TopBar(
+            languageViewModel = languageViewModel,
             onMenuClick = onBack,
             isBackButton = true
         )
@@ -81,21 +76,35 @@ fun WeatherScreen(
             Box {
                 WeatherBackgroundArt(currentIconUrl = currentIconUrl)
                 Column(
-                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    CurrentDateTimeHeader()
+                    // Header de date et d'heure locales réelles adaptées à la langue
+                    CurrentDateTimeHeader(
+                        languageViewModel = languageViewModel,
+                        currentLanguage = currentLanguage
+                    )
                     Spacer(modifier = Modifier.height(4.dp))
+
+                    // Navigateur de jours adapté à la langue
                     WeekDayNavigator(
                         selectedDate = selectedDate,
                         onPrevious = { viewModel.shiftDay(-1) },
-                        onNext = { viewModel.shiftDay(1) }
+                        onNext = { viewModel.shiftDay(1) },
+                        languageViewModel = languageViewModel,
+                        currentLanguage = currentLanguage
                     )
                     Spacer(modifier = Modifier.height(16.dp))
+
                     if (hourlyPoints.isNotEmpty()) {
+                        // Courbe de température (avec pop-up d'informations traduit)
                         TemperatureCurve(
                             points = hourlyPoints,
                             selectedIndex = selectedHourIndex,
+                            languageViewModel = languageViewModel,
+                            currentLanguage = currentLanguage,
                             modifier = Modifier.padding(horizontal = 12.dp)
                         )
                     }
@@ -103,16 +112,32 @@ fun WeatherScreen(
             }
 
             if (loading) {
-                Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
                     CircularProgressIndicator()
                 }
             }
 
-            // NOUVEAU : avertissement si la position utilisateur n'a pas pu etre utilisee
-            // (position introuvable / permission refusee) -> meteo du campus affichee a la place.
-            ErrorBanner(error = locationWarning, modifier = Modifier.padding(12.dp))
+            // Affichage des bannières avec les textes traduits
+            if (translatedLocationWarning != null) {
+                ErrorBanner(
+                    error = translatedLocationWarning,
+                    languageViewModel = languageViewModel,
+                    modifier = Modifier.padding(12.dp)
+                )
+            }
 
-            ErrorBanner(error = error, modifier = Modifier.padding(12.dp))
+            if (translatedError != null) {
+                ErrorBanner(
+                    error = translatedError,
+                    languageViewModel = languageViewModel,
+                    modifier = Modifier.padding(12.dp)
+                )
+            }
 
             Box(
                 modifier = Modifier
@@ -120,19 +145,25 @@ fun WeatherScreen(
                     .background(ObcampusPrimary)
                     .padding(vertical = 12.dp)
             ) {
+                // Échelle horaire (avec accessibilité et descriptions météo traduites)
                 HourlyWeatherScale(
                     points = hourlyPoints,
                     selectedIndex = selectedHourIndex,
-                    onHourSelected = { viewModel.selectHour(it) }
+                    onHourSelected = { viewModel.selectHour(it) },
+                    languageViewModel = languageViewModel,
+                    currentLanguage = currentLanguage
                 )
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            // Panneau de qualité de l'air entièrement traduit (descriptions & polluants)
             AirQualityPanel(
                 dailyData = airQualityDaily,
                 hourData = airQualityHour,
                 showHourly = showHourlyAirQuality,
+                languageViewModel = languageViewModel,
+                currentLanguage = currentLanguage,
                 modifier = Modifier.padding(bottom = 24.dp)
             )
         }

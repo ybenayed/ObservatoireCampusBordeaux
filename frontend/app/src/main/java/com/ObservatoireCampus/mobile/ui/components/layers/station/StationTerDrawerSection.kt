@@ -2,9 +2,11 @@ package com.ObservatoireCampus.mobile.ui.components.layers.station
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Train
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import com.ObservatoireCampus.mobile.model.layers.LayerItemUiState
 import com.ObservatoireCampus.mobile.ui.components.layers.LayerSection
+import com.ObservatoireCampus.mobile.viewmodel.AppLanguage // AJOUT
+import com.ObservatoireCampus.mobile.viewmodel.LanguageViewModel // AJOUT
 
 @Composable
 fun StationTerDrawerSection(
@@ -13,10 +15,24 @@ fun StationTerDrawerSection(
     expanded: Boolean,
     onExpandToggle: () -> Unit,
     onMasterToggle: () -> Unit,
-    onItemToggle: (String) -> Unit
+    onItemToggle: (String) -> Unit,
+    languageViewModel: LanguageViewModel, // AJOUT
+    currentLanguage: AppLanguage           // AJOUT
 ) {
+    var translatedTitle by remember { mutableStateOf("TER") }
+    var translatedItemLabels by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+
+    LaunchedEffect(currentLanguage, items) {
+        translatedTitle = languageViewModel.translate("TER")
+
+        val newLabels = items.associate { item ->
+            item.key to StationTypeStyle.label(item.key, languageViewModel)
+        }
+        translatedItemLabels = newLabels
+    }
+
     LayerSection(
-        label = "TER",
+        label = translatedTitle,
         icon = Icons.Default.Train,
         items = items,
         masterActive = masterActive,
@@ -26,6 +42,6 @@ fun StationTerDrawerSection(
         onItemToggle = onItemToggle,
         itemColor = { StationTypeStyle.color(it) },
         itemIcon = { StationTypeStyle.icon(it) },
-        itemLabel = { StationTypeStyle.label(it) }
+        itemLabel = { key -> translatedItemLabels[key] ?: key }
     )
 }

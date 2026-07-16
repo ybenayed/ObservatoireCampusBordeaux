@@ -19,16 +19,17 @@ import org.osmdroid.views.overlay.Marker
  * Retourne le Marker créé/mis à jour, à conserver dans un `remember` côté appelant
  * pour pouvoir le repositionner sans en recréer un nouveau à chaque fois.
  */
+// Dans location.kt
 fun upsertUserLocationMarker(
     mapView: MapView,
     existing: Marker?,
     point: GeoPoint,
+    titleText: String, // <-- AJOUT : On passe le titre déjà traduit ici
     onClick: () -> Unit
 ): Marker {
     val marker = existing ?: Marker(mapView).also {
         it.icon = createUserLocationDrawable(mapView.context)
         it.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-        it.title = "Ma position"
         it.setOnMarkerClickListener { _, _ ->
             onClick()
             true
@@ -36,6 +37,7 @@ fun upsertUserLocationMarker(
         mapView.overlays.add(it)
     }
 
+    marker.title = titleText // <-- MISE À JOUR DYNAMIQUE
     marker.position = point
     mapView.invalidate()
     return marker

@@ -5,7 +5,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -16,14 +18,80 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import com.ObservatoireCampus.mobile.model.parking.ParkingStatusDto
 import com.ObservatoireCampus.mobile.ui.components.layers.parking.ParkingTypeStyle
+import com.ObservatoireCampus.mobile.viewmodel.LanguageViewModel
+import com.ObservatoireCampus.mobile.viewmodel.AppLanguage
 
 @Composable
 fun ParkingBubble(
     status: ParkingStatusDto?,
     loading: Boolean,
     onClose: () -> Unit,
+    languageViewModel: LanguageViewModel,
+    currentLanguage: AppLanguage,
     modifier: Modifier = Modifier
 ) {
+    // 1. Déclaration de tous les états pour stocker les textes traduits
+    var textEtatLabel by remember { mutableStateOf("État") }
+    var textEtatValue by remember { mutableStateOf("Non renseigné") }
+    var textPlacesLibres by remember { mutableStateOf("Places libres") }
+    var textTypeLabel by remember { mutableStateOf("Type") }
+    var textGestionnaire by remember { mutableStateOf("Gestionnaire") }
+    var textAdresse by remember { mutableStateOf("Adresse") }
+    var textHauteurMax by remember { mutableStateOf("Hauteur max") }
+    var textTarifs by remember { mutableStateOf("Tarifs") }
+    var textFermer by remember { mutableStateOf("Fermer") }
+    var textIndisponible by remember { mutableStateOf("Informations indisponibles") }
+    var textDonneesObsolescentes by remember { mutableStateOf("Données dynamiques obsolètes") }
+    var textNonRenseigne by remember { mutableStateOf("Non renseigné") }
+
+    // États spécifiques aux lignes de tarifs
+    var textHeure1 by remember { mutableStateOf("1 heure") }
+    var textHeures2 by remember { mutableStateOf("2 heures") }
+    var textHeures3 by remember { mutableStateOf("3 heures") }
+    var textHeures4 by remember { mutableStateOf("4 heures") }
+    var textHeures24 by remember { mutableStateOf("24 heures") }
+    var textNuit by remember { mutableStateOf("Nuit") }
+
+    var translatedStructureLabel by remember { mutableStateOf("Parking") }
+    var translatedTypeLabel by remember { mutableStateOf("Non renseigné") }
+
+    // 2. Gestion de toutes les traductions suspendues au même endroit
+    LaunchedEffect(status, currentLanguage) {
+        // Traductions des libellés fixes (déclenchées au changement de langue)
+        textEtatLabel = languageViewModel.translate("État")
+        textPlacesLibres = languageViewModel.translate("Places libres")
+        textTypeLabel = languageViewModel.translate("Type")
+        textGestionnaire = languageViewModel.translate("Gestionnaire")
+        textAdresse = languageViewModel.translate("Adresse")
+        textHauteurMax = languageViewModel.translate("Hauteur max")
+        textTarifs = languageViewModel.translate("Tarifs")
+        textFermer = languageViewModel.translate("Fermer")
+        textIndisponible = languageViewModel.translate("Informations indisponibles")
+        textDonneesObsolescentes = languageViewModel.translate("Données dynamiques obsolètes")
+        textNonRenseigne = languageViewModel.translate("Non renseigné")
+
+        textHeure1 = languageViewModel.translate("1 heure")
+        textHeures2 = languageViewModel.translate("2 heures")
+        textHeures3 = languageViewModel.translate("3 heures")
+        textHeures4 = languageViewModel.translate("4 heures")
+        textHeures24 = languageViewModel.translate("24 heures")
+        textNuit = languageViewModel.translate("Nuit")
+
+        if (status != null) {
+            translatedStructureLabel = ParkingTypeStyle.structureLabel(status.type, languageViewModel)
+            translatedTypeLabel = status.taType?.let { ParkingTypeStyle.label(it, languageViewModel) } ?: "Non renseigné"
+
+            // Traduction dynamique de la valeur de l'état du parking
+            val etatRaw = when (status.etat) {
+                "OUVERT" -> "Ouvert"
+                "COMPLET" -> "Complet"
+                "FERME" -> "Fermé"
+                else -> "Non renseigné"
+            }
+            textEtatValue = languageViewModel.translate(etatRaw)
+        }
+    }
+
     Card(
         modifier = modifier.widthIn(max = 340.dp),
         shape = RoundedCornerShape(20.dp),
@@ -50,11 +118,10 @@ fun ParkingBubble(
                     )
                     Spacer(modifier = Modifier.height(2.dp))
 
-                    // Nom + sigle du type de structure à côté
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             imageVector = ParkingTypeStyle.structureIcon(status?.type),
-                            contentDescription = ParkingTypeStyle.structureLabel(status?.type),
+                            contentDescription = translatedStructureLabel,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(16.dp)
                         )
@@ -73,7 +140,7 @@ fun ParkingBubble(
                 IconButton(onClick = onClose, modifier = Modifier.size(32.dp)) {
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = "Fermer",
+                        contentDescription = textFermer,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -92,7 +159,7 @@ fun ParkingBubble(
                 }
                 status == null -> {
                     Text(
-                        text = "Informations indisponibles",
+                        text = textIndisponible,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
@@ -103,19 +170,19 @@ fun ParkingBubble(
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
 
                         // --- Gestion de l'état ---
-                        val (etatLabel, etatColor) = when (status.etat) {
-                            "OUVERT" -> "Ouvert" to Color(0xFF4CAF50)
-                            "COMPLET" -> "Complet" to Color(0xFFD32F2F)
-                            "FERME" -> "Fermé" to Color(0xFF616161)
-                            else -> "Non renseigné" to Color(0xFF9E9E9E)
+                        val etatColor = when (status.etat) {
+                            "OUVERT" -> Color(0xFF4CAF50)
+                            "COMPLET" -> Color(0xFFD32F2F)
+                            "FERME" -> Color(0xFF616161)
+                            else -> Color(0xFF9E9E9E)
                         }
-                        InfoRow(label = "État", value = etatLabel, valueColor = etatColor)
+                        InfoRow(label = textEtatLabel, value = textEtatValue, valueColor = etatColor)
 
                         // --- Gestion des places libres ---
                         val placesValue = if (status.libre != null) {
                             if (status.npTotal != null) "${status.libre} / ${status.npTotal}" else "${status.libre}"
                         } else {
-                            "Non renseigné"
+                            textNonRenseigne
                         }
 
                         val placesColor = when {
@@ -124,34 +191,23 @@ fun ParkingBubble(
                             else -> Color(0xFF1976D2)
                         }
 
-                        InfoRow(
-                            label = "Places libres",
-                            value = placesValue,
-                            valueColor = placesColor
-                        )
+                        InfoRow(label = textPlacesLibres, value = placesValue, valueColor = placesColor)
 
                         // --- Tarif / Type d'accès ---
                         InfoRow(
-                            label = "Type",
-                            value = status.taType?.let { ParkingTypeStyle.label(it) } ?: "Non renseigné"
+                            label = textTypeLabel,
+                            value = if (translatedTypeLabel == "Non renseigné") textNonRenseigne else translatedTypeLabel
                         )
 
                         // --- Gestionnaire ---
-                        InfoRow(
-                            label = "Gestionnaire",
-                            value = status.exploit ?: "Non renseigné"
-                        )
+                        InfoRow(label = textGestionnaire, value = status.exploit ?: textNonRenseigne)
 
                         // --- Adresse ---
-                        InfoRow(
-                            label = "Adresse",
-                            value = status.adresse ?: "Non renseigné",
-                            singleLineValue = false
-                        )
+                        InfoRow(label = textAdresse, value = status.adresse ?: textNonRenseigne, singleLineValue = false)
 
                         // --- Hauteur max (si dispo) ---
                         status.gabariMax?.let {
-                            InfoRow(label = "Hauteur max", value = "${it}m")
+                            InfoRow(label = textHauteurMax, value = "${it}m")
                         }
 
                         // --- TARIFS HORAIRES (si parking payant) ---
@@ -159,7 +215,7 @@ fun ParkingBubble(
                         if (isPayant) {
                             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                             Text(
-                                text = "Tarifs",
+                                text = textTarifs,
                                 style = MaterialTheme.typography.labelLarge,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
@@ -167,19 +223,19 @@ fun ParkingBubble(
                             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                 TarifRow(label = "15 min", price = status.thQuar)
                                 TarifRow(label = "30 min", price = status.thDemi)
-                                TarifRow(label = "1 heure", price = status.thHeur)
-                                TarifRow(label = "2 heures", price = status.th2)
-                                TarifRow(label = "3 heures", price = status.th3)
-                                TarifRow(label = "4 heures", price = status.th4)
-                                TarifRow(label = "24 heures", price = status.th24)
-                                TarifRow(label = "Nuit", price = status.thNuit)
+                                TarifRow(label = textHeure1, price = status.thHeur)
+                                TarifRow(label = textHeures2, price = status.th2)
+                                TarifRow(label = textHeures3, price = status.th3)
+                                TarifRow(label = textHeures4, price = status.th4)
+                                TarifRow(label = textHeures24, price = status.th24)
+                                TarifRow(label = textNuit, price = status.thNuit)
                             }
                         }
 
                         // --- ALERTE SI ALIMENTATION OBSOLÈTE ---
                         if (!status.dataFraiche) {
                             Text(
-                                text = "⚠️ Données dynamiques obsolètes",
+                                text = "⚠️ $textDonneesObsolescentes",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = Color(0xFFD32F2F),
                                 fontWeight = FontWeight.Bold,
@@ -224,11 +280,10 @@ private fun InfoRow(
     }
 }
 
-// --- LE COMPOSANT MANQUANT REQUIS POUR CORRIGER L'ERREUR ---
 @Composable
 private fun TarifRow(
     label: String,
-    price: Any? // Utilisation de Any? au cas où vos prix soient des Double, Float ou String
+    price: Any?
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),

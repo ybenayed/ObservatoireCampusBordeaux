@@ -22,6 +22,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public class PassageTBService {
 
     private final RestTemplate restTemplate;
+    private final LineTBService lineTBService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private static final String MONITORING_URL =
@@ -96,7 +97,7 @@ public class PassageTBService {
                 }
 
                 passages.add(PassageTBDTO.builder()
-                        .ligne(journey.path("LineRef").path("value").asText(null))
+                        .ligne(resolveLigne(journey))
                         .direction(firstValue(journey.path("DirectionName")))
                         .destination(firstValue(journey.path("DestinationName")))
                         .heureTheorique(aimed)
@@ -110,6 +111,49 @@ public class PassageTBService {
 
         log.info("Passages rafraichis pour {} : {} resultats", stopId, passages.size());
         return passages;
+    }
+
+    /**
+     * Resout le code de ligne "public" (ex: "A" pour le tram A, "15" pour le bus 15)
+     * a partir du LineRef technique du passage (ex: "bordeaux:Line:59:LOC").
+     *
+     * Le flux stop-monitoring.json ne fournit pas de nom commercial directement
+     * (pas de PublishedLineName) : on passe donc par le referentiel LineTBService,
+     * alimente par l'endpoint lines-discovery.json qui expose le champ LineCode.
+     *
+     * Fallback sur un parsing brut du LineRef si la ligne est absente du
+     * referentiel (ligne toute nouvelle, referentiel pas encore synchronise...),
+     * pour ne jamais renvoyer un champ vide.
+     */
+    private String resolveLigne(JsonNode journey) {
+        String lineRef = journey.path("LineRef").path("value").asText(null);
+
+        String code = lineTBService.resolveLineCode(lineRef);
+        if (code != null && !code.isBlank()) {
+            return code;
+        }
+
+        return extractLineCodeFromRef(lineRef);
+    }
+
+    /**
+     * Fallback uniquement : extrait le dernier segment utile d'un LineRef
+     * du type "bordeaux:Line:59:LOC" -> "59". N'est utilise que si le
+     * referentiel LineTBService ne connait pas encore cette ligne.
+     */
+    private String extractLineCodeFromRef(String lineRef) {
+        if (lineRef == null || lineRef.isBlank()) return null;
+        if (!lineRef.contains(":")) return lineRef;
+
+        String[] segments = lineRef.split(":");
+        for (int i = 0; i < segments.length; i++) {
+            if (segments[i].equalsIgnoreCase("line") && i + 1 < segments.length) {
+                return segments[i + 1];
+            }
+        }
+        // Pas de segment "line" trouve : on prend l'avant-dernier segment
+        // (le dernier est generalement un suffixe generique type "LOC")
+        return segments.length >= 2 ? segments[segments.length - 2] : segments[segments.length - 1];
     }
 
     private String firstValue(JsonNode arrayNode) {

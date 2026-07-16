@@ -1,5 +1,6 @@
 package com.ObservatoireCampus.mobile.ui.screens
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -58,301 +59,381 @@ import org.osmdroid.views.overlay.Marker
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.ObservatoireCampus.mobile.model.station.StationVPositionDto
+import com.ObservatoireCampus.mobile.viewmodel.LanguageViewModel
+import com.ObservatoireCampus.mobile.viewmodel.AppLanguage
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MapScreen(
     viewModel: MapViewModel = viewModel(),
-    onWeatherClick: (Double?, Double?) -> Unit = { _, _ -> }
+    languageViewModel: LanguageViewModel, // <-- Instance partagée reçue[cite: 5]
+    onWeatherClick: (Double?, Double?) -> Unit = { _, _ -> } // <--[cite: 5]
 ) {
-    val campusList by viewModel.campusList.collectAsState()
-    val campusError by viewModel.error.collectAsState()
+    val campusList by viewModel.campusList.collectAsState() // <--[cite: 5]
+    val campusError by viewModel.error.collectAsState() // <--[cite: 5]
 
-    val parkingViewModel: ParkingViewModel = viewModel(
-        factory = ParkingViewModelFactory(ParkingRepository())
+    val parkingViewModel: ParkingViewModel = viewModel( // <--[cite: 5]
+        factory = ParkingViewModelFactory(ParkingRepository()) // <--[cite: 5]
     )
-    val parkingLayers by parkingViewModel.parkingLayers.collectAsState()
-    val visibleParking by parkingViewModel.visiblePositions.collectAsState()
-    val parkingError by parkingViewModel.error.collectAsState()
-    val selectedParkingId by parkingViewModel.selectedParkingId.collectAsState()
-    val selectedParkingStatus by parkingViewModel.selectedParkingStatus.collectAsState()
-    val bubbleLoadingParking by parkingViewModel.bubbleLoading.collectAsState()
-    var parkingExpanded by remember { mutableStateOf(false) }
+    val parkingLayers by parkingViewModel.parkingLayers.collectAsState() // <--[cite: 5]
+    val visibleParking by parkingViewModel.visiblePositions.collectAsState() // <--[cite: 5]
+    val parkingError by parkingViewModel.error.collectAsState() // <--[cite: 5]
+    val selectedParkingId by parkingViewModel.selectedParkingId.collectAsState() // <--[cite: 5]
+    val selectedParkingStatus by parkingViewModel.selectedParkingStatus.collectAsState() // <--[cite: 5]
+    val bubbleLoadingParking by parkingViewModel.bubbleLoading.collectAsState() // <--[cite: 5]
+    var parkingExpanded by remember { mutableStateOf(false) } // <--[cite: 5]
 
     // Bus / Tram
-    val stationTBViewModel: StationTBViewModel = viewModel(
-        factory = StationTBViewModelFactory(StationTBRepository())
+    val stationTBViewModel: StationTBViewModel = viewModel( // <--[cite: 5]
+        factory = StationTBViewModelFactory(StationTBRepository()) // <--[cite: 5]
     )
-    val stationTBLayers by stationTBViewModel.layers.collectAsState()
-    val visibleStationsTB by stationTBViewModel.visiblePositions.collectAsState()
-    val selectedStationTB by stationTBViewModel.selectedStation.collectAsState()
-    val passagesTB by stationTBViewModel.passages.collectAsState()
-    val bubbleLoadingTB by stationTBViewModel.bubbleLoading.collectAsState()
-    val stationTBError by stationTBViewModel.error.collectAsState()
-    var stationTBExpanded by remember { mutableStateOf(false) }
+    val stationTBLayers by stationTBViewModel.layers.collectAsState() // <--[cite: 5]
+    val visibleStationsTB by stationTBViewModel.visiblePositions.collectAsState() // <--[cite: 5]
+    val selectedStationTB by stationTBViewModel.selectedStation.collectAsState() // <--[cite: 5]
+    val passagesTB by stationTBViewModel.passages.collectAsState() // <--[cite: 5]
+    val bubbleLoadingTB by stationTBViewModel.bubbleLoading.collectAsState() // <--[cite: 5]
+    val stationTBError by stationTBViewModel.error.collectAsState() // <--[cite: 5]
+    var stationTBExpanded by remember { mutableStateOf(false) } // <--[cite: 5]
 
     // Velo
-    val stationVViewModel: StationVViewModel = viewModel(
-        factory = StationVViewModelFactory(StationVRepository())
+    val stationVViewModel: StationVViewModel = viewModel( // <--[cite: 5]
+        factory = StationVViewModelFactory(StationVRepository()) // <--[cite: 5]
     )
-    val stationVLayers by stationVViewModel.layers.collectAsState()
-    val visibleStationsV by stationVViewModel.visiblePositions.collectAsState()
-    val selectedStationVDetail by stationVViewModel.selectedDetail.collectAsState()
-    val bubbleLoadingV by stationVViewModel.bubbleLoading.collectAsState()
-    val stationVError by stationVViewModel.error.collectAsState()
-    var stationVExpanded by remember { mutableStateOf(false) }
+    val stationVLayers by stationVViewModel.layers.collectAsState() // <--[cite: 5]
+    val visibleStationsV by stationVViewModel.visiblePositions.collectAsState() // <--[cite: 5]
+    val selectedStationVDetail by stationVViewModel.selectedDetail.collectAsState() // <--[cite: 5]
+    val bubbleLoadingV by stationVViewModel.bubbleLoading.collectAsState() // <--[cite: 5]
+    val stationVError by stationVViewModel.error.collectAsState() // <--[cite: 5]
+    var stationVExpanded by remember { mutableStateOf(false) } // <--[cite: 5]
 
     // TER
-    val stationTerViewModel: StationTerViewModel = viewModel(
-        factory = StationTerViewModelFactory(StationTerRepository())
+    val stationTerViewModel: StationTerViewModel = viewModel( // <--[cite: 5]
+        factory = StationTerViewModelFactory(StationTerRepository()) // <--[cite: 5]
     )
-    val stationTerLayers by stationTerViewModel.layers.collectAsState()
-    val visibleStationsTer by stationTerViewModel.visiblePositions.collectAsState()
-    val selectedStationTer by stationTerViewModel.selectedStation.collectAsState()
-    val passagesTer by stationTerViewModel.passages.collectAsState()
-    val bubbleLoadingTer by stationTerViewModel.bubbleLoading.collectAsState()
-    val stationTerError by stationTerViewModel.error.collectAsState()
-    var stationTerExpanded by remember { mutableStateOf(false) }
+    val stationTerLayers by stationTerViewModel.layers.collectAsState() // <--[cite: 5]
+    val visibleStationsTer by stationTerViewModel.visiblePositions.collectAsState() // <--[cite: 5]
+    val selectedStationTer by stationTerViewModel.selectedStation.collectAsState() // <--[cite: 5]
+    val passagesTer by stationTerViewModel.passages.collectAsState() // <--[cite: 5]
+    val bubbleLoadingTer by stationTerViewModel.bubbleLoading.collectAsState() // <--[cite: 5]
+    val stationTerError by stationTerViewModel.error.collectAsState() // <--[cite: 5]
+    var stationTerExpanded by remember { mutableStateOf(false) } // <--[cite: 5]
 
     // Free vehicle
-    val freeVehicleViewModel: FreeVehicleViewModel = viewModel(
-        factory = FreeVehicleViewModelFactory(FreeVehicleRepository())
+    val freeVehicleViewModel: FreeVehicleViewModel = viewModel( // <--[cite: 5]
+        factory = FreeVehicleViewModelFactory(FreeVehicleRepository()) // <--[cite: 5]
     )
-    val freeVehicleLayers by freeVehicleViewModel.layers.collectAsState()
-    val visibleFreeVehicles by freeVehicleViewModel.visiblePositions.collectAsState()
-    val freeVehicleError by freeVehicleViewModel.error.collectAsState()
-    val selectedFreeVehicleId by freeVehicleViewModel.selectedVehicleId.collectAsState()
-    val selectedFreeVehicle by freeVehicleViewModel.selectedVehicle.collectAsState()
-    val bubbleLoadingFV by freeVehicleViewModel.bubbleLoading.collectAsState()
-    var freeVehicleExpanded by remember { mutableStateOf(false) }
+    val freeVehicleLayers by freeVehicleViewModel.layers.collectAsState() // <--[cite: 5]
+    val visibleFreeVehicles by freeVehicleViewModel.visiblePositions.collectAsState() // <--[cite: 5]
+    val freeVehicleError by freeVehicleViewModel.error.collectAsState() // <--[cite: 5]
+    val selectedFreeVehicleId by freeVehicleViewModel.selectedVehicleId.collectAsState() // <--[cite: 5]
+    val selectedFreeVehicle by freeVehicleViewModel.selectedVehicle.collectAsState() // <--[cite: 5]
+    val bubbleLoadingFV by freeVehicleViewModel.bubbleLoading.collectAsState() // <--[cite: 5]
+    var freeVehicleExpanded by remember { mutableStateOf(false) } // <--[cite: 5]
 
     // Localisation utilisateur
-    val context = LocalContext.current
-    val locationViewModel: LocationViewModel = viewModel(
-        factory = LocationViewModelFactory(LocationServices.getFusedLocationProviderClient(context))
+    val context = LocalContext.current // <--[cite: 5]
+    val locationViewModel: LocationViewModel = viewModel( // <--[cite: 5]
+        factory = LocationViewModelFactory(LocationServices.getFusedLocationProviderClient(context)) // <--[cite: 5]
     )
-    val userLocation by locationViewModel.userLocation.collectAsState()
-    val locationBubbleVisible by locationViewModel.bubbleVisible.collectAsState()
-    val locationAccuracy by locationViewModel.accuracyMeters.collectAsState()
-    val locationState by locationViewModel.locationState.collectAsState()
+    val userLocation by locationViewModel.userLocation.collectAsState() // <--[cite: 5]
+    val locationBubbleVisible by locationViewModel.bubbleVisible.collectAsState() // <--[cite: 5]
+    val locationAccuracy by locationViewModel.accuracyMeters.collectAsState() // <--[cite: 5]
+    val locationState by locationViewModel.locationState.collectAsState() // <--[cite: 5]
 
-    // Une seule zone d'erreur pour tout l'ecran : on combine les sources
-    val combinedError =
-        listOfNotNull(
-            campusError, parkingError, stationTBError, stationVError, stationTerError, freeVehicleError
-        )
-            .takeIf { it.isNotEmpty() }
-            ?.joinToString(" | ")
+    // Langue (Obtenue depuis les paramètres de la fonction)
+    val currentLanguage by languageViewModel.currentLanguage.collectAsState() // <--[cite: 5]
+    val isTranslating by languageViewModel.isTranslating.collectAsState() // <--[cite: 5]
+    val languageError by languageViewModel.error.collectAsState() // <--[cite: 5]
 
-    val drawerState = rememberDrawerState(DrawerValue.Closed)
-    val scope = rememberCoroutineScope()
-    var mapView by remember { mutableStateOf<MapView?>(null) }
-    var showCampus by remember { mutableStateOf(false) }
+    // --- TRADUCTION DE LA LOCALISATION ET DES CAMPUS ---
+    var displayedCampusList by remember { mutableStateOf(campusList) } // <--[cite: 5]
+    var translatedUserLocationPinTitle by remember { mutableStateOf("Ma position") } // <-- AJOUTÉ
 
-    // NOUVEAU : reference du marqueur "Ma position" pour le deplacer sans le recreer
-    var userLocationMarker by remember { mutableStateOf<Marker?>(null) }
+    LaunchedEffect(currentLanguage, campusList) { // <--[cite: 5]
+        Log.d("OBS_CAMPUS", "--- UPDATE LANGUE ---") // <--[cite: 5]
+        Log.d("OBS_CAMPUS", "Langue actuelle détectée dans MapScreen : $currentLanguage") // <--[cite: 5]
+        Log.d("OBS_CAMPUS", "Nombre de campus dans campusList d'origine : ${campusList.size}") // <--[cite: 5]
 
-    LaunchedEffect(Unit) {
-        if (campusList.isEmpty()) viewModel.loadCampus()
-        parkingViewModel.loadParking()
-        stationTBViewModel.loadStations()
-        stationVViewModel.loadStations()
-        stationTerViewModel.loadStations()
-        freeVehicleViewModel.loadStations()
-    }
+        // Traduction du titre du pin
+        translatedUserLocationPinTitle = languageViewModel.translate("Ma position") // <-- AJOUTÉ
 
-    // NOUVEAU : des qu'on a une position ET que la MapView est prete, on dessine/deplace le marqueur.
-    // Si userLocation redevient null (clic sur "clear"), on retire le marqueur de la carte.
-    LaunchedEffect(userLocation, mapView) {
-        val currentMapView = mapView ?: return@LaunchedEffect
-        val point = userLocation
-
-        if (point != null) {
-            userLocationMarker = upsertUserLocationMarker(
-                mapView = currentMapView,
-                existing = userLocationMarker,
-                point = point,
-                onClick = { locationViewModel.onMarkerClicked() }
-            )
-            // On centre ET on zoome sur la position a chaque nouveau fix GPS
-            currentMapView.controller.setZoom(18.0)
-            currentMapView.controller.animateTo(point)
-        } else if (userLocationMarker != null) {
-            removeUserLocationMarker(currentMapView, userLocationMarker)
-            userLocationMarker = null
+        displayedCampusList = if (currentLanguage == AppLanguage.FR) { // <--[cite: 5]
+            Log.d("OBS_CAMPUS", "La langue est FR. Pas de traduction nécessaire. Retour campus d'origine.") // <--[cite: 5]
+            campusList // <--[cite: 5]
+        } else {
+            Log.d("OBS_CAMPUS", "La langue n'est pas FR (Langue actuelle : $currentLanguage). Traduction en cours...") // <--[cite: 5]
+            campusList.map { campus -> // <--[cite: 5]
+                val nomTraduit = languageViewModel.translate(campus.name) // <--[cite: 5]
+                Log.d("OBS_CAMPUS", "Traduction campus : '${campus.name}' -> '$nomTraduit'") // <--[cite: 5]
+                campus.copy(name = nomTraduit) // <--[cite: 5]
+            }
         }
     }
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            DrawerMenu(
-                parkingLayers = parkingLayers,
-                parkingMasterActive = parkingViewModel.masterActive,
-                parkingExpanded = parkingExpanded,
-                onParkingExpandToggle = { parkingExpanded = !parkingExpanded },
-                onParkingMasterToggle = { parkingViewModel.toggleMaster() },
-                onParkingItemToggle = { key -> parkingViewModel.toggleType(key) },
-                stationTBLayers = stationTBLayers,
-                stationTBMasterActive = stationTBViewModel.masterActive,
-                stationTBExpanded = stationTBExpanded,
-                onStationTBExpandToggle = { stationTBExpanded = !stationTBExpanded },
-                onStationTBMasterToggle = { stationTBViewModel.toggleMaster() },
-                onStationTBItemToggle = { key -> stationTBViewModel.toggleType(key) },
-                stationVLayers = stationVLayers,
-                stationVMasterActive = stationVViewModel.masterActive,
-                stationVExpanded = stationVExpanded,
-                onStationVExpandToggle = { stationVExpanded = !stationVExpanded },
-                onStationVMasterToggle = { stationVViewModel.toggleMaster() },
-                onStationVItemToggle = { key -> stationVViewModel.toggleType(key) },
-                stationTerLayers = stationTerLayers,
-                stationTerMasterActive = stationTerViewModel.masterActive,
-                stationTerExpanded = stationTerExpanded,
-                onStationTerExpandToggle = { stationTerExpanded = !stationTerExpanded },
-                onStationTerMasterToggle = { stationTerViewModel.toggleMaster() },
-                onStationTerItemToggle = { key -> stationTerViewModel.toggleType(key) },
-                freeVehicleLayers = freeVehicleLayers,
-                freeVehicleMasterActive = freeVehicleViewModel.masterActive,
-                freeVehicleExpanded = freeVehicleExpanded,
-                onFreeVehicleExpandToggle = { freeVehicleExpanded = !freeVehicleExpanded },
-                onFreeVehicleMasterToggle = { freeVehicleViewModel.toggleMaster() },
-                onFreeVehicleItemToggle = { key -> freeVehicleViewModel.toggleType(key) },
-                onWeatherClick = {
-                    scope.launch { drawerState.close() }
-                    onWeatherClick(userLocation?.latitude, userLocation?.longitude)
+    // Une seule zone d'erreur pour tout l'ecran : on combine les sources
+    val combinedError = // <--[cite: 5]
+        listOfNotNull( // <--[cite: 5]
+            campusError, parkingError, stationTBError, stationVError, // <--[cite: 5]
+            stationTerError, freeVehicleError, languageError // <--[cite: 5]
+        ) // <--[cite: 5]
+            .takeIf { it.isNotEmpty() } // <--[cite: 5]
+            ?.joinToString(" | ") // <--[cite: 5]
+
+    val drawerState = rememberDrawerState(DrawerValue.Closed) // <--[cite: 5]
+    val scope = rememberCoroutineScope() // <--[cite: 5]
+    var mapView by remember { mutableStateOf<MapView?>(null) } // <--[cite: 5]
+    var showCampus by remember { mutableStateOf(false) } // <--[cite: 5]
+
+    // Référence du marqueur "Ma position" pour le déplacer sans le recréer
+    var userLocationMarker by remember { mutableStateOf<Marker?>(null) } // <--[cite: 5]
+
+    LaunchedEffect(Unit) { // <--[cite: 5]
+        if (campusList.isEmpty()) viewModel.loadCampus() // <--[cite: 5]
+        parkingViewModel.loadParking() // <--[cite: 5]
+        stationTBViewModel.loadStations() // <--[cite: 5]
+        stationVViewModel.loadStations() // <--[cite: 5]
+        stationTerViewModel.loadStations() // <--[cite: 5]
+        freeVehicleViewModel.loadStations() // <--[cite: 5]
+    }
+
+    // Dessine / met à jour le marqueur avec la traduction appropriée
+    LaunchedEffect(userLocation, mapView, translatedUserLocationPinTitle) { // <-- AJOUT de la dépendance de traduction
+        val currentMapView = mapView ?: return@LaunchedEffect // <--[cite: 5]
+        val point = userLocation // <--[cite: 5]
+
+        if (point != null) { // <--[cite: 5]
+            userLocationMarker = upsertUserLocationMarker( // <--[cite: 5]
+                mapView = currentMapView, // <--[cite: 5]
+                existing = userLocationMarker, // <--[cite: 5]
+                point = point, // <--[cite: 5]
+                titleText = translatedUserLocationPinTitle, // <-- AJOUTÉ : Titre traduit injecté
+                onClick = { locationViewModel.onMarkerClicked() } // <--[cite: 5]
+            )
+            currentMapView.controller.setZoom(18.0) // <--[cite: 5]
+            currentMapView.controller.animateTo(point) // <--[cite: 5]
+        } else if (userLocationMarker != null) { // <--[cite: 5]
+            removeUserLocationMarker(currentMapView, userLocationMarker) // <--[cite: 5]
+            userLocationMarker = null // <--[cite: 5]
+        }
+    }
+
+    ModalNavigationDrawer( // <--[cite: 5]
+        drawerState = drawerState, // <--[cite: 5]
+        drawerContent = { // <--[cite: 5]
+            DrawerMenu( // <--[cite: 5]
+                languageViewModel = languageViewModel, // <--[cite: 5]
+                parkingLayers = parkingLayers, // <--[cite: 5]
+                parkingMasterActive = parkingViewModel.masterActive, // <--[cite: 5]
+                parkingExpanded = parkingExpanded, // <--[cite: 5]
+                onParkingExpandToggle = { parkingExpanded = !parkingExpanded }, // <--[cite: 5]
+                onParkingMasterToggle = { parkingViewModel.toggleMaster() }, // <--[cite: 5]
+                onParkingItemToggle = { key -> parkingViewModel.toggleType(key) }, // <--[cite: 5]
+                stationTBLayers = stationTBLayers, // <--[cite: 5]
+                stationTBMasterActive = stationTBViewModel.masterActive, // <--[cite: 5]
+                stationTBExpanded = stationTBExpanded, // <--[cite: 5]
+                onStationTBExpandToggle = { stationTBExpanded = !stationTBExpanded }, // <--[cite: 5]
+                onStationTBMasterToggle = { stationTBViewModel.toggleMaster() }, // <--[cite: 5]
+                onStationTBItemToggle = { key -> stationTBViewModel.toggleType(key) }, // <--[cite: 5]
+                stationVLayers = stationVLayers, // <--[cite: 5]
+                stationVMasterActive = stationVViewModel.masterActive, // <--[cite: 5]
+                stationVExpanded = stationVExpanded, // <--[cite: 5]
+                onStationVExpandToggle = { stationVExpanded = !stationVExpanded }, // <--[cite: 5]
+                onStationVMasterToggle = { stationVViewModel.toggleMaster() }, // <--[cite: 5]
+                onStationVItemToggle = { key -> stationVViewModel.toggleType(key) }, // <--[cite: 5]
+                stationTerLayers = stationTerLayers, // <--[cite: 5]
+                stationTerMasterActive = stationTerViewModel.masterActive, // <--[cite: 5]
+                stationTerExpanded = stationTerExpanded, // <--[cite: 5]
+                onStationTerExpandToggle = { stationTerExpanded = !stationTerExpanded }, // <--[cite: 5]
+                onStationTerMasterToggle = { stationTerViewModel.toggleMaster() }, // <--[cite: 5]
+                onStationTerItemToggle = { key -> stationTerViewModel.toggleType(key) }, // <--[cite: 5]
+                freeVehicleLayers = freeVehicleLayers, // <--[cite: 5]
+                freeVehicleMasterActive = freeVehicleViewModel.masterActive, // <--[cite: 5]
+                freeVehicleExpanded = freeVehicleExpanded, // <--[cite: 5]
+                onFreeVehicleExpandToggle = { freeVehicleExpanded = !freeVehicleExpanded }, // <--[cite: 5]
+                onFreeVehicleMasterToggle = { freeVehicleViewModel.toggleMaster() }, // <--[cite: 5]
+                onFreeVehicleItemToggle = { key -> freeVehicleViewModel.toggleType(key) }, // <--[cite: 5]
+
+                // Données de langue passées au Drawer
+                currentLanguage = currentLanguage, // <--[cite: 5]
+                isTranslating = isTranslating, // <--[cite: 5]
+                onLanguageSelected = { selectedLang -> // <--[cite: 5]
+                    Log.d("OBS_CAMPUS", "Clic détecté pour changer de langue vers : $selectedLang") // <--[cite: 5]
+                    languageViewModel.setLanguage(selectedLang) // <--[cite: 5]
                 },
-                onBackToMap = { scope.launch { drawerState.close() } }
+                onWeatherClick = { // <--[cite: 5]
+                    scope.launch { drawerState.close() } // <--[cite: 5]
+                    onWeatherClick(userLocation?.latitude, userLocation?.longitude) // <--[cite: 5]
+                },
+                onBackToMap = { scope.launch { drawerState.close() } } // <--[cite: 5]
             )
         }
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(ObcampusBackground)
+                .background(ObcampusBackground) // <--[cite: 5]
         ) {
-            CampusMap(
-                campusList = campusList,
-                showPolygons = showCampus,
-                parkingList = visibleParking,
-                onParkingClick = { parkingViewModel.onParkingClicked(it.id) },
-                stationTBList = visibleStationsTB,
-                onStationTBClick = { stationTBViewModel.onStationClicked(it) },
-                stationVList = visibleStationsV,
-                onStationVClick = { stationVViewModel.onStationClicked(it) },
-                stationTerList = visibleStationsTer,
-                onStationTerClick = { stationTerViewModel.onStationClicked(it) },
-                freeVehicleList = visibleFreeVehicles,
-                onFreeVehicleClick = { freeVehicleViewModel.onVehicleClicked(it.bikeId) },
-                onMapReady = { mapView = it },
-                modifier = Modifier.fillMaxSize()
+            // Force la reconstruction complète de la carte à chaque changement de langue
+            key(displayedCampusList) { // <--[cite: 5]
+                CampusMap( // <--[cite: 5]
+                    campusList = displayedCampusList, // <--[cite: 5]
+                    showPolygons = showCampus, // <--[cite: 5]
+                    languageViewModel = languageViewModel, // <--[cite: 5]
+                    parkingList = visibleParking, // <--[cite: 5]
+                    onParkingClick = { parkingViewModel.onParkingClicked(it.id) }, // <--[cite: 5]
+                    stationTBList = visibleStationsTB, // <--[cite: 5]
+                    onStationTBClick = { stationTBViewModel.onStationClicked(it) }, // <--[cite: 5]
+                    stationVList = visibleStationsV, // <--[cite: 5]
+                    onStationVClick = { stationVViewModel.onStationClicked(it) }, // <--[cite: 5]
+                    stationTerList = visibleStationsTer, // <--[cite: 5]
+                    onStationTerClick = { stationTerViewModel.onStationClicked(it) }, // <--[cite: 5]
+                    freeVehicleList = visibleFreeVehicles, // <--[cite: 5]
+                    onFreeVehicleClick = { freeVehicleViewModel.onVehicleClicked(it.bikeId) }, // <--[cite: 5]
+                    onMapReady = { mapView = it }, // <--[cite: 5]
+                    modifier = Modifier.fillMaxSize() // <--[cite: 5]
+                )
+            }
+
+            TopBar(
+                languageViewModel = languageViewModel, // <--[cite: 5]
+                onMenuClick = { scope.launch { drawerState.open() } } // <--[cite: 5]
             )
 
-            TopBar(onMenuClick = { scope.launch { drawerState.open() } })
-
             SearchBar(
+                languageViewModel = languageViewModel, // <--[cite: 5]
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .padding(top = 64.dp)
+                    .padding(top = 64.dp) // <--[cite: 5]
             )
 
             CampusButton(
-                onClick = { showCampus = !showCampus },
+                languageViewModel = languageViewModel, // <--[cite: 5]
+                onClick = { showCampus = !showCampus }, // <--[cite: 5]
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(top = 6.dp, end = 10.dp)
+                    .padding(top = 6.dp, end = 10.dp) // <--[cite: 5]
             )
+
+            // Bouton de localisation avec traduction
             LocationButton(
-                viewModel = locationViewModel,
+                viewModel = locationViewModel, // <--[cite: 5]
+                languageViewModel = languageViewModel, // <-- AJOUTÉ
+                currentLanguage = currentLanguage,     // <-- AJOUTÉ
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(top = 6.dp, end = 62.dp)
+                    .padding(top = 6.dp, end = 62.dp) // <--[cite: 5]
             )
 
             ZoomControls(
-                onZoomIn = { mapView?.controller?.zoomIn() },
-                onZoomOut = { mapView?.controller?.zoomOut() },
+                onZoomIn = { mapView?.controller?.zoomIn() }, // <--[cite: 5]
+                onZoomOut = { mapView?.controller?.zoomOut() }, // <--[cite: 5]
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(bottom = 24.dp, end = 16.dp)
+                    .padding(bottom = 24.dp, end = 16.dp) // <--[cite: 5]
             )
 
             CurrentWeatherBadge(
-                onClick = { onWeatherClick(userLocation?.latitude, userLocation?.longitude) },
+                onClick = { onWeatherClick(userLocation?.latitude, userLocation?.longitude) }, // <--[cite: 5]
                 modifier = Modifier
                     .align(Alignment.BottomStart)
-                    .padding(bottom = 24.dp, start = 16.dp)
+                    .padding(bottom = 24.dp, start = 16.dp) // <--[cite: 5]
             )
 
             ErrorBanner(
-                error = combinedError,
+                error = combinedError, // <--[cite: 5]
+                languageViewModel = languageViewModel, // <--[cite: 5]
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .padding(top = 116.dp, start = 16.dp, end = 16.dp)
+                    .padding(top = 116.dp, start = 16.dp, end = 16.dp) // <--[cite: 5]
             )
 
             // --- GESTION DES BULLES D'INFO ---
-            if (selectedParkingId != null) {
-                ParkingBubble(
-                    status = selectedParkingStatus,
-                    loading = bubbleLoadingParking,
-                    onClose = { parkingViewModel.closeBubble() },
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 32.dp, start = 16.dp, end = 16.dp)
-                )
-            } else if (selectedStationTB != null) {
-                StationTBBubble(
-                    station = selectedStationTB!!,
-                    passages = passagesTB,
-                    loading = bubbleLoadingTB,
-                    onClose = { stationTBViewModel.closeBubble() },
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 32.dp, start = 16.dp, end = 16.dp)
-                )
-            } else if (selectedStationVDetail != null) {
-                val positionCorrespondante = visibleStationsV.find { it.stationId == selectedStationVDetail!!.stationId }
-                    ?: StationVPositionDto(0L, selectedStationVDetail!!.stationId, selectedStationVDetail!!.nom ?: "Station", selectedStationVDetail!!.latitude, selectedStationVDetail!!.longitude)
+            if (selectedParkingId != null) { // <--[cite: 5]
+                key(currentLanguage) { // <--[cite: 5]
+                    ParkingBubble( // <--[cite: 5]
+                        status = selectedParkingStatus, // <--[cite: 5]
+                        loading = bubbleLoadingParking, // <--[cite: 5]
+                        onClose = { parkingViewModel.closeBubble() }, // <--[cite: 5]
+                        languageViewModel = languageViewModel, // <--[cite: 5]
+                        currentLanguage = currentLanguage, // <--[cite: 5]
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 32.dp, start = 16.dp, end = 16.dp) // <--[cite: 5]
+                    )
+                }
+            } else if (selectedStationTB != null) { // <--[cite: 5]
+                key(currentLanguage) { // <--[cite: 5]
+                    StationTBBubble( // <--[cite: 5]
+                        station = selectedStationTB!!, // <--[cite: 5]
+                        passages = passagesTB, // <--[cite: 5]
+                        loading = bubbleLoadingTB, // <--[cite: 5]
+                        onClose = { stationTBViewModel.closeBubble() }, // <--[cite: 5]
+                        languageViewModel = languageViewModel, // <--[cite: 5]
+                        currentLanguage = currentLanguage, // <--[cite: 5]
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 32.dp, start = 16.dp, end = 16.dp) // <--[cite: 5]
+                    )
+                }
+            } else if (selectedStationVDetail != null) { // <--[cite: 5]
+                val positionCorrespondante = visibleStationsV.find { it.stationId == selectedStationVDetail!!.stationId } // <--[cite: 5]
+                    ?: StationVPositionDto(0L, selectedStationVDetail!!.stationId, selectedStationVDetail!!.nom ?: "Station", selectedStationVDetail!!.latitude, selectedStationVDetail!!.longitude) // <--[cite: 5]
 
-                StationVBubble(
-                    position = positionCorrespondante,
-                    detail = selectedStationVDetail,
-                    loading = bubbleLoadingV,
-                    onClose = { stationVViewModel.closeBubble() },
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 32.dp, start = 16.dp, end = 16.dp)
-                )
-            } else if (selectedStationTer != null) {
-                StationTerBubble(
-                    station = selectedStationTer!!,
-                    passages = passagesTer,
-                    loading = bubbleLoadingTer,
-                    onClose = { stationTerViewModel.closeBubble() },
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 32.dp, start = 16.dp, end = 16.dp)
-                )
-            } else if (selectedFreeVehicleId != null) {
-                FreeVehicleBubble(
-                    detail = selectedFreeVehicle,
-                    loading = bubbleLoadingFV,
-                    onClose = { freeVehicleViewModel.closeBubble() },
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 32.dp, start = 16.dp, end = 16.dp)
-                )
-            } else if (locationBubbleVisible) {
-                // NOUVEAU : bulle "Ma position"
-                LocationBubble(
-                    point = userLocation,
-                    loading = locationState is com.ObservatoireCampus.mobile.viewmodel.location.LocationUiState.Loading,
-                    accuracyMeters = locationAccuracy,
-                    onClose = { locationViewModel.closeBubble() },
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 32.dp, start = 16.dp, end = 16.dp)
-                )
+                key(currentLanguage) { // <--[cite: 5]
+                    StationVBubble( // <--[cite: 5]
+                        position = positionCorrespondante, // <--[cite: 5]
+                        detail = selectedStationVDetail, // <--[cite: 5]
+                        loading = bubbleLoadingV, // <--[cite: 5]
+                        onClose = { stationVViewModel.closeBubble() }, // <--[cite: 5]
+                        languageViewModel = languageViewModel, // <--[cite: 5]
+                        currentLanguage = currentLanguage, // <--[cite: 5]
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 32.dp, start = 16.dp, end = 16.dp) // <--[cite: 5]
+                    )
+                }
+            } else if (selectedStationTer != null) { // <--[cite: 5]
+                key(currentLanguage) { // <--[cite: 5]
+                    StationTerBubble( // <--[cite: 5]
+                        station = selectedStationTer!!, // <--[cite: 5]
+                        passages = passagesTer, // <--[cite: 5]
+                        loading = bubbleLoadingTer, // <--[cite: 5]
+                        onClose = { stationTerViewModel.closeBubble() }, // <--[cite: 5]
+                        languageViewModel = languageViewModel, // <--[cite: 5]
+                        currentLanguage = currentLanguage, // <--[cite: 5]
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 32.dp, start = 16.dp, end = 16.dp) // <--[cite: 5]
+                    )
+                }
+            } else if (selectedFreeVehicleId != null) { // <--[cite: 5]
+                key(currentLanguage) { // <--[cite: 5]
+                    FreeVehicleBubble( // <--[cite: 5]
+                        detail = selectedFreeVehicle, // <--[cite: 5]
+                        loading = bubbleLoadingFV, // <--[cite: 5]
+                        onClose = { freeVehicleViewModel.closeBubble() }, // <--[cite: 5]
+                        languageViewModel = languageViewModel, // <--[cite: 5]
+                        currentLanguage = currentLanguage, // <--[cite: 5]
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 32.dp, start = 16.dp, end = 16.dp) // <--[cite: 5]
+                    )
+                }
+            } else if (locationBubbleVisible) { // <--[cite: 5]
+                // Bulle d'informations de géolocalisation avec traduction
+                key(currentLanguage) { // <-- AJOUTÉ : Clé de recomposition pour rafraîchir en direct
+                    LocationBubble(
+                        point = userLocation, // <--[cite: 5]
+                        loading = locationState is com.ObservatoireCampus.mobile.viewmodel.location.LocationUiState.Loading, // <--[cite: 5]
+                        accuracyMeters = locationAccuracy, // <--[cite: 5]
+                        onClose = { locationViewModel.closeBubble() }, // <--[cite: 5]
+                        languageViewModel = languageViewModel, // <-- AJOUTÉ
+                        currentLanguage = currentLanguage,     // <-- AJOUTÉ
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 32.dp, start = 16.dp, end = 16.dp) // <--[cite: 5]
+                    )
+                }
             }
         }
     }

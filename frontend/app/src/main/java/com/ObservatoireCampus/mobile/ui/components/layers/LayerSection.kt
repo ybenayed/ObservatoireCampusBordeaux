@@ -40,7 +40,7 @@ fun LayerSection(
     onItemToggle: (String) -> Unit,
     itemColor: (String) -> Color = { ParkingTypeStyle.color(it) },
     itemIcon: (String) -> ImageVector = { ParkingTypeStyle.icon(it) },
-    itemLabel: (String) -> String = { ParkingTypeStyle.label(it) }
+    itemLabel: (String) -> String = { it } // <--- MODIFIÉ : Retourne simplement la clé par défaut
 ) {
     Surface(
         modifier = Modifier
@@ -60,7 +60,6 @@ fun LayerSection(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Partie gauche : Œil + Icône + Texte (Prend toute la place disponible pour repousser la suite)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.weight(1f).padding(end = 8.dp)
@@ -82,13 +81,12 @@ fun LayerSection(
                         text = label,
                         fontWeight = FontWeight.SemiBold,
                         style = MaterialTheme.typography.bodyLarge,
-                        maxLines = 2, // Texte sur deux lignes max
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f) // Absorbe l'espace pour aligner le badge à droite
+                        modifier = Modifier.weight(1f)
                     )
                 }
 
-                // Partie droite : Nombre global (Badge) aligné tout à la fin
                 if (items.isNotEmpty()) {
                     CountBadge(count = items.sumOf { it.count })
                 }
@@ -128,10 +126,9 @@ private fun LayerSubItemRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 44.dp, end = 12.dp, top = 5.dp, bottom = 5.dp),
-        verticalAlignment = Alignment.CenterVertically, // Aligne verticalement au milieu des deux lignes de texte
+        verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        // Partie gauche : Pastille + Texte
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.weight(1f).padding(end = 8.dp)
@@ -158,13 +155,12 @@ private fun LayerSubItemRow(
                 style = MaterialTheme.typography.bodyMedium,
                 color = if (item.visible) MaterialTheme.colorScheme.onSurface
                 else MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2, // Autorise l'écriture sur 2 lignes
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f) // Pousse la suite à l'extrême droite
+                modifier = Modifier.weight(1f)
             )
         }
 
-        // Partie droite : Nombre (Badge) + Œil groupés à la fin et alignés verticalement au milieu
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.End

@@ -5,7 +5,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -13,22 +13,38 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ObservatoireCampus.mobile.viewmodel.AppLanguage
+import com.ObservatoireCampus.mobile.viewmodel.LanguageViewModel
 import org.osmdroid.util.GeoPoint
 import kotlin.math.roundToInt
 
-/**
- * Bulle d'info affichée quand l'utilisateur clique sur son propre marqueur
- * de position sur la carte. Même charte visuelle que FreeVehicleBubble /
- * ParkingBubble / StationTBBubble.
- */
 @Composable
 fun LocationBubble(
     point: GeoPoint?,
     loading: Boolean,
     accuracyMeters: Float? = null,
     onClose: () -> Unit,
+    languageViewModel: LanguageViewModel, // <-- AJOUT
+    currentLanguage: AppLanguage,          // <-- AJOUT
     modifier: Modifier = Modifier
 ) {
+    // États pour stocker les textes traduits
+    var translatedHeader by remember { mutableStateOf("MA POSITION") }
+    var translatedSubHeader by remember { mutableStateOf("Vous êtes ici") }
+    var translatedUnavailable by remember { mutableStateOf("Position indisponible") }
+    var translatedLatitude by remember { mutableStateOf("Latitude") }
+    var translatedLongitude by remember { mutableStateOf("Longitude") }
+    var translatedPrecision by remember { mutableStateOf("Précision") }
+
+    LaunchedEffect(currentLanguage) {
+        translatedHeader = languageViewModel.translate("MA POSITION")
+        translatedSubHeader = languageViewModel.translate("Vous êtes ici")
+        translatedUnavailable = languageViewModel.translate("Position indisponible")
+        translatedLatitude = languageViewModel.translate("Latitude")
+        translatedLongitude = languageViewModel.translate("Longitude")
+        translatedPrecision = languageViewModel.translate("Précision")
+    }
+
     Card(
         modifier = modifier.widthIn(max = 340.dp),
         shape = RoundedCornerShape(20.dp),
@@ -37,7 +53,7 @@ fun LocationBubble(
     ) {
         Column(Modifier.padding(16.dp)) {
 
-            // EN-TÊTE : même design centré que les autres bulles
+            // EN-TÊTE
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -47,15 +63,15 @@ fun LocationBubble(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "MA POSITION",
+                        text = translatedHeader, // <-- TRADUIT
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFF1976D2), // Bleu, cohérent avec les infos "position"
+                        color = Color(0xFF1976D2),
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "Vous êtes ici",
+                        text = translatedSubHeader, // <-- TRADUIT
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.ExtraBold,
                         textAlign = TextAlign.Center
@@ -68,7 +84,7 @@ fun LocationBubble(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = "Fermer",
+                        contentDescription = "Fermer", // Optionnel : à traduire aussi si nécessaire
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -87,7 +103,7 @@ fun LocationBubble(
                 }
                 point == null -> {
                     Text(
-                        text = "Position indisponible",
+                        text = translatedUnavailable, // <-- TRADUIT
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
@@ -97,16 +113,16 @@ fun LocationBubble(
                 else -> {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         InfoRow(
-                            label = "Latitude",
+                            label = translatedLatitude, // <-- TRADUIT
                             value = "%.5f".format(point.latitude)
                         )
                         InfoRow(
-                            label = "Longitude",
+                            label = translatedLongitude, // <-- TRADUIT
                             value = "%.5f".format(point.longitude)
                         )
                         accuracyMeters?.let {
                             InfoRow(
-                                label = "Précision",
+                                label = translatedPrecision, // <-- TRADUIT
                                 value = "± ${it.roundToInt()} m",
                                 valueColor = Color(0xFF4CAF50)
                             )

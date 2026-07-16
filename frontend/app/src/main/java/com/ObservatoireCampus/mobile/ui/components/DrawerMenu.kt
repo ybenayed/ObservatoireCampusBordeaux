@@ -1,8 +1,11 @@
 package com.ObservatoireCampus.mobile.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -21,20 +24,23 @@ import com.ObservatoireCampus.mobile.ui.components.layers.station.StationVDrawer
 import com.ObservatoireCampus.mobile.ui.components.layers.station.StationTerDrawerSection
 import com.ObservatoireCampus.mobile.ui.theme.ObcampusPrimary
 import com.ObservatoireCampus.mobile.ui.theme.ObcampusSecondary
-import androidx.compose.foundation.clickable
+import com.ObservatoireCampus.mobile.viewmodel.AppLanguage
+import com.ObservatoireCampus.mobile.viewmodel.LanguageViewModel // AJOUT
 
 private data class DrawerOption(
-    val label: String,
+    val id: String, // Identification pour la logique interne
     val icon: ImageVector
 )
 
+// On utilise des ID stables au lieu de textes écrits en dur pour pouvoir les traduire à la volée
 private val drawerOptions = listOf(
-    DrawerOption("Bornes electriques", Icons.Default.EvStation),
-    DrawerOption("Meteo", Icons.Default.Cloud)
+    DrawerOption("bornes_electriques", Icons.Default.EvStation),
+    DrawerOption("meteo", Icons.Default.Cloud)
 )
 
 @Composable
 fun DrawerMenu(
+    languageViewModel: LanguageViewModel, // AJOUT de la gestion de langue
     parkingLayers: List<LayerItemUiState>,
     parkingMasterActive: Boolean,
     parkingExpanded: Boolean,
@@ -65,13 +71,29 @@ fun DrawerMenu(
     onFreeVehicleExpandToggle: () -> Unit,
     onFreeVehicleMasterToggle: () -> Unit,
     onFreeVehicleItemToggle: (String) -> Unit,
+    currentLanguage: AppLanguage,
+    isTranslating: Boolean,
+    onLanguageSelected: (AppLanguage) -> Unit,
     onWeatherClick: () -> Unit = {},
     onOptionClick: (String, Boolean) -> Unit = { _, _ -> },
     onBackToMap: () -> Unit = {},
     onLogout: () -> Unit = {}
 ) {
     var activeStates by remember {
-        mutableStateOf(drawerOptions.associate { it.label to false })
+        mutableStateOf(drawerOptions.associate { it.id to false })
+    }
+
+    // Traductions des textes statiques du Drawer
+    var translatedBornesLabel by remember { mutableStateOf("Bornes électriques") }
+    var translatedMeteoLabel by remember { mutableStateOf("Météo") }
+    var translatedLogoutLabel by remember { mutableStateOf("Déconnexion") }
+    var translatedBackLabel by remember { mutableStateOf("Retour") }
+
+    LaunchedEffect(currentLanguage) {
+        translatedBornesLabel = languageViewModel.translate("Bornes électriques")
+        translatedMeteoLabel = languageViewModel.translate("Météo")
+        translatedLogoutLabel = languageViewModel.translate("Déconnexion")
+        translatedBackLabel = languageViewModel.translate("Retour")
     }
 
     ModalDrawerSheet(
@@ -80,7 +102,6 @@ fun DrawerMenu(
             .fillMaxWidth(0.69f)
             .background(Color.White)
     ) {
-
         // HEADER
         Row(
             modifier = Modifier
@@ -90,7 +111,7 @@ fun DrawerMenu(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             IconButton(onClick = onBackToMap) {
-                Icon(Icons.Default.ArrowBack, contentDescription = "Retour")
+                Icon(Icons.Default.ArrowBack, contentDescription = translatedBackLabel)
             }
             Text(
                 text = "OBCampus",
@@ -100,139 +121,168 @@ fun DrawerMenu(
         }
 
         HorizontalDivider()
-        Spacer(modifier = Modifier.height(8.dp))
 
-        // PARKING - layer dynamique
-        ParkingDrawerSection(
-            items = parkingLayers,
-            masterActive = parkingMasterActive,
-            expanded = parkingExpanded,
-            onExpandToggle = onParkingExpandToggle,
-            onMasterToggle = onParkingMasterToggle,
-            onItemToggle = onParkingItemToggle
-        )
+        // Conteneur déroulant
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(vertical = 8.dp)
+        ) {
+            // PARKING
+            ParkingDrawerSection(
+                items = parkingLayers,
+                masterActive = parkingMasterActive,
+                expanded = parkingExpanded,
+                onExpandToggle = onParkingExpandToggle,
+                onMasterToggle = onParkingMasterToggle,
+                onItemToggle = onParkingItemToggle,
+                languageViewModel = languageViewModel, // PASSAGE DE LA LANGUE
+                currentLanguage = currentLanguage      // PASSAGE DE LA LANGUE
+            )
 
-        // BUS / TRAM - layer dynamique
-        StationTBDrawerSection(
-            items = stationTBLayers,
-            masterActive = stationTBMasterActive,
-            expanded = stationTBExpanded,
-            onExpandToggle = onStationTBExpandToggle,
-            onMasterToggle = onStationTBMasterToggle,
-            onItemToggle = onStationTBItemToggle
-        )
+            // BUS / TRAM
+            StationTBDrawerSection(
+                items = stationTBLayers,
+                masterActive = stationTBMasterActive,
+                expanded = stationTBExpanded,
+                onExpandToggle = onStationTBExpandToggle,
+                onMasterToggle = onStationTBMasterToggle,
+                onItemToggle = onStationTBItemToggle,
+                languageViewModel = languageViewModel, // PASSAGE DE LA LANGUE
+                currentLanguage = currentLanguage      // PASSAGE DE LA LANGUE
+            )
 
-        // VELO - layer dynamique
-        StationVDrawerSection(
-            items = stationVLayers,
-            masterActive = stationVMasterActive,
-            expanded = stationVExpanded,
-            onExpandToggle = onStationVExpandToggle,
-            onMasterToggle = onStationVMasterToggle,
-            onItemToggle = onStationVItemToggle
-        )
+            // VELO
+            StationVDrawerSection(
+                items = stationVLayers,
+                masterActive = stationVMasterActive,
+                expanded = stationVExpanded,
+                onExpandToggle = onStationVExpandToggle,
+                onMasterToggle = onStationVMasterToggle,
+                onItemToggle = onStationVItemToggle,
+                languageViewModel = languageViewModel, // PASSAGE DE LA LANGUE
+                currentLanguage = currentLanguage      // PASSAGE DE LA LANGUE
+            )
 
-        // TER - layer dynamique
-        StationTerDrawerSection(
-            items = stationTerLayers,
-            masterActive = stationTerMasterActive,
-            expanded = stationTerExpanded,
-            onExpandToggle = onStationTerExpandToggle,
-            onMasterToggle = onStationTerMasterToggle,
-            onItemToggle = onStationTerItemToggle
-        )
+            // TER
+            StationTerDrawerSection(
+                items = stationTerLayers,
+                masterActive = stationTerMasterActive,
+                expanded = stationTerExpanded,
+                onExpandToggle = onStationTerExpandToggle,
+                onMasterToggle = onStationTerMasterToggle,
+                onItemToggle = onStationTerItemToggle,
+                languageViewModel = languageViewModel, // PASSAGE DE LA LANGUE
+                currentLanguage = currentLanguage      // PASSAGE DE LA LANGUE
+            )
 
-        // LIBRE-SERVICE - layer dynamique
-        FreeVehicleDrawerSection(
-            items = freeVehicleLayers,
-            masterActive = freeVehicleMasterActive,
-            expanded = freeVehicleExpanded,
-            onExpandToggle = onFreeVehicleExpandToggle,
-            onMasterToggle = onFreeVehicleMasterToggle,
-            onItemToggle = onFreeVehicleItemToggle
-        )
+            // LIBRE-SERVICE
+            FreeVehicleDrawerSection(
+                items = freeVehicleLayers,
+                masterActive = freeVehicleMasterActive,
+                expanded = freeVehicleExpanded,
+                onExpandToggle = onFreeVehicleExpandToggle,
+                onMasterToggle = onFreeVehicleMasterToggle,
+                onItemToggle = onFreeVehicleItemToggle,
+                languageViewModel = languageViewModel, // PASSAGE DE LA LANGUE
+                currentLanguage = currentLanguage      // PASSAGE DE LA LANGUE
+            )
 
-        // AUTRES OPTIONS - Statiques
-        drawerOptions.forEach { option ->
-            val isActive = activeStates[option.label] == true
+            // AUTRES OPTIONS - Statiques et Traduisibles
+            drawerOptions.forEach { option ->
+                val isActive = activeStates[option.id] == true
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 6.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(
-                        if (isActive) ObcampusSecondary.copy(alpha = 0.2f)
-                        else Color.Transparent
-                    )
-                    .clickable {
-                        if (option.label == "Meteo") {
-                            onWeatherClick()
-                        }
-                    }
-                    .padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically, // Aligne verticalement l'icone, le texte et l'oeil au milieu
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
+                // Association de l'id d'option avec le label traduit
+                val labelText = if (option.id == "bornes_electriques") translatedBornesLabel else translatedMeteoLabel
+
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f).padding(end = 8.dp) // Repousse l'oeil tout a la fin
-                ) {
-                    Icon(
-                        imageVector = option.icon,
-                        contentDescription = option.label,
-                        tint = if (isActive) ObcampusPrimary else Color.Gray,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = option.label,
-                        maxLines = 2, // Autorise le nom a s'afficher sur deux lignes maximum
-                        modifier = Modifier.weight(1f) // Prend le maximum de place et pousse le reste vers le bout
-                    )
-                }
-
-                if (option.label != "Meteo") {
-                    IconButton(
-                        onClick = {
-                            val newState = !(activeStates[option.label] ?: false)
-                            activeStates = activeStates.toMutableMap().apply {
-                                put(option.label, newState)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            if (isActive) ObcampusSecondary.copy(alpha = 0.2f)
+                            else Color.Transparent
+                        )
+                        .clickable {
+                            if (option.id == "meteo") {
+                                onWeatherClick()
                             }
-                            onOptionClick(option.label, newState)
-                        },
-                        modifier = Modifier.size(28.dp) // Taille fixe pour l'oeil
+                        }
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(end = 8.dp)
                     ) {
                         Icon(
-                            imageVector = if (isActive) Icons.Default.Visibility
-                            else Icons.Default.VisibilityOff,
-                            contentDescription = "toggle"
+                            imageVector = option.icon,
+                            contentDescription = labelText,
+                            tint = if (isActive) ObcampusPrimary else Color.Gray,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = labelText,
+                            maxLines = 2,
+                            modifier = Modifier.weight(1f)
                         )
                     }
-                } else {
-                    // Spacer pour maintenir l'alignement meme si l'icone meteo n'a pas d'oeil
-                    Spacer(modifier = Modifier.width(28.dp))
+
+                    if (option.id != "meteo") {
+                        IconButton(
+                            onClick = {
+                                val newState = !(activeStates[option.id] ?: false)
+                                activeStates = activeStates.toMutableMap().apply {
+                                    put(option.id, newState)
+                                }
+                                onOptionClick(option.id, newState)
+                            },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (isActive) Icons.Default.Visibility
+                                else Icons.Default.VisibilityOff,
+                                contentDescription = "toggle"
+                            )
+                        }
+                    } else {
+                        Spacer(modifier = Modifier.width(28.dp))
+                    }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.weight(1f))
+        // --- SECTION BASSE (STATIQUE, TOUJOURS VISIBLE) ---
         HorizontalDivider()
 
-        // LOGOUT
+        // 1. SECTION LANGUE
+        LanguageDrawerSection(
+            languageViewModel = languageViewModel, // <-- AJOUT de la transmission ici !
+            currentLanguage = currentLanguage,
+            isTranslating = isTranslating,
+            onLanguageSelected = onLanguageSelected
+        )
+
+        HorizontalDivider()
+
+        // 2. BOUTON DE DECONNEXION
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .clickable { onLogout() }
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Default.ExitToApp, contentDescription = "Logout", tint = Color.Red)
+            Icon(Icons.Default.ExitToApp, contentDescription = translatedLogoutLabel, tint = Color.Red)
             Spacer(modifier = Modifier.width(12.dp))
-            Text(text = "Deconnexion", color = Color.Red)
-            Spacer(modifier = Modifier.weight(1f))
-            IconButton(onClick = onLogout) {
-                Icon(Icons.Default.ArrowForward, contentDescription = "logout")
-            }
+            Text(text = translatedLogoutLabel, color = Color.Red, modifier = Modifier.weight(1f))
+            Icon(Icons.Default.ArrowForward, contentDescription = "logout", tint = Color.Gray)
         }
     }
 }

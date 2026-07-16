@@ -18,9 +18,7 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -29,22 +27,29 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.ObservatoireCampus.mobile.model.weather.HourlyWeatherPointDto
+import com.ObservatoireCampus.mobile.viewmodel.AppLanguage
+import com.ObservatoireCampus.mobile.viewmodel.LanguageViewModel
 import kotlinx.coroutines.launch
 
-/**
- * Echelle horaire 00:00 -> 23:00. Se positionne sur l'heure selectionnee a l'ouverture
- * (heure actuelle si "aujourd'hui"). Fleches gauche/droite pour se deplacer dans les heures.
- * Tap direct sur une heure = selection (met a jour la courbe + le panneau qualite de l'air).
- */
 @Composable
 fun HourlyWeatherScale(
     points: List<HourlyWeatherPointDto>,
     selectedIndex: Int,
     onHourSelected: (Int) -> Unit,
+    languageViewModel: LanguageViewModel, // <-- AJOUT
+    currentLanguage: AppLanguage,          // <-- AJOUT
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+
+    var textPrev by remember { mutableStateOf("Heures précédentes") }
+    var textNext by remember { mutableStateOf("Heures suivantes") }
+
+    LaunchedEffect(currentLanguage) {
+        textPrev = languageViewModel.translate("Heures précédentes")
+        textNext = languageViewModel.translate("Heures suivantes")
+    }
 
     LaunchedEffect(points) {
         if (points.isNotEmpty()) {
@@ -58,7 +63,7 @@ fun HourlyWeatherScale(
                 listState.animateScrollToItem((listState.firstVisibleItemIndex - 3).coerceAtLeast(0))
             }
         }) {
-            Icon(Icons.Default.ChevronLeft, contentDescription = "Heures precedentes", tint = Color.White)
+            Icon(Icons.Default.ChevronLeft, contentDescription = textPrev, tint = Color.White)
         }
 
         LazyRow(
@@ -69,6 +74,12 @@ fun HourlyWeatherScale(
             items(points.size) { index ->
                 val point = points[index]
                 val isSelected = index == selectedIndex
+
+                // Traduction à la volée de la description météo envoyée à l'image
+                var translatedDesc by remember { mutableStateOf(point.description ?: "") }
+                LaunchedEffect(currentLanguage, point.description) {
+                    translatedDesc = point.description?.let { languageViewModel.translate(it) } ?: ""
+                }
 
                 Column(
                     modifier = Modifier
@@ -82,7 +93,7 @@ fun HourlyWeatherScale(
                     Text(text = point.time.takeLast(5), color = Color.White, fontSize = 11.sp)
                     AsyncImage(
                         model = point.icon,
-                        contentDescription = point.description,
+                        contentDescription = translatedDesc,
                         modifier = Modifier.padding(vertical = 2.dp)
                     )
                     Text(
@@ -100,7 +111,7 @@ fun HourlyWeatherScale(
                 listState.animateScrollToItem((listState.firstVisibleItemIndex + 3).coerceAtMost(maxIndex))
             }
         }) {
-            Icon(Icons.Default.ChevronRight, contentDescription = "Heures suivantes", tint = Color.White)
+            Icon(Icons.Default.ChevronRight, contentDescription = textNext, tint = Color.White)
         }
     }
 }

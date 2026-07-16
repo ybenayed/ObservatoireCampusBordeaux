@@ -1,12 +1,11 @@
 package com.ObservatoireCampus.mobile.ui.components.station
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -17,6 +16,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ObservatoireCampus.mobile.model.station.StationVDetailDto
 import com.ObservatoireCampus.mobile.model.station.StationVPositionDto
+import com.ObservatoireCampus.mobile.viewmodel.LanguageViewModel
+import com.ObservatoireCampus.mobile.viewmodel.AppLanguage
 
 @Composable
 fun StationVBubble(
@@ -24,8 +25,51 @@ fun StationVBubble(
     detail: StationVDetailDto?,
     loading: Boolean,
     onClose: () -> Unit,
+    languageViewModel: LanguageViewModel,
+    currentLanguage: AppLanguage,
     modifier: Modifier = Modifier
 ) {
+    // États pour les textes traduits
+    var textHeaderLabel by remember { mutableStateOf("STATION VÉLO") }
+    var textStatutLabel by remember { mutableStateOf("Statut") }
+    var textEnService by remember { mutableStateOf("En service") }
+    var textHorsService by remember { mutableStateOf("Hors service") }
+    var textVelosDispo by remember { mutableStateOf("Vélos disponibles") }
+    var textClassiques by remember { mutableStateOf("  • Classiques") }
+    var textElectriques by remember { mutableStateOf("  • Électriques") }
+    var textPlacesLibres by remember { mutableStateOf("Places libres") }
+    var textCapacite by remember { mutableStateOf("Capacité totale") }
+    var textMisAJour by remember { mutableStateOf("Mis à jour") }
+    var textFermer by remember { mutableStateOf("Fermer") }
+    var textIndisponible by remember { mutableStateOf("Informations indisponibles") }
+
+    // États de calcul de temps relatifs (Traductions dynamiques)
+    var textIlYa by remember { mutableStateOf("il y a") }
+    var textMin by remember { mutableStateOf("min") }
+    var textHeureAbbrev by remember { mutableStateOf("h") }
+    var textSecondesAbbrev by remember { mutableStateOf("s") }
+
+    // Gestion des traductions réactives
+    LaunchedEffect(detail, currentLanguage) {
+        textHeaderLabel = languageViewModel.translate("STATION VÉLO")
+        textStatutLabel = languageViewModel.translate("Statut")
+        textEnService = languageViewModel.translate("En service")
+        textHorsService = languageViewModel.translate("Hors service")
+        textVelosDispo = languageViewModel.translate("Vélos disponibles")
+        textClassiques = languageViewModel.translate("  • Classiques")
+        textElectriques = languageViewModel.translate("  • Électriques")
+        textPlacesLibres = languageViewModel.translate("Places libres")
+        textCapacite = languageViewModel.translate("Capacité totale")
+        textMisAJour = languageViewModel.translate("Mis à jour")
+        textFermer = languageViewModel.translate("Fermer")
+        textIndisponible = languageViewModel.translate("Informations indisponibles")
+
+        textIlYa = languageViewModel.translate("il y a")
+        textMin = languageViewModel.translate("min")
+        textHeureAbbrev = languageViewModel.translate("h")
+        textSecondesAbbrev = languageViewModel.translate("s")
+    }
+
     Card(
         modifier = modifier.widthIn(max = 340.dp),
         shape = RoundedCornerShape(20.dp),
@@ -34,7 +78,6 @@ fun StationVBubble(
     ) {
         Column(Modifier.padding(16.dp)) {
 
-            // EN-TÊTE : Même style centré que pour la bulle de transport (TB)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -44,9 +87,9 @@ fun StationVBubble(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "STATION VÉLO",
+                        text = textHeaderLabel,
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFF00897B), // Couleur Teal/Verte style Vélos en libre-service
+                        color = Color(0xFF00897B),
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp
                     )
@@ -61,22 +104,17 @@ fun StationVBubble(
                     )
                 }
 
-                IconButton(
-                    onClick = onClose,
-                    modifier = Modifier.size(32.dp)
-                ) {
+                IconButton(onClick = onClose, modifier = Modifier.size(32.dp)) {
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = "Fermer",
+                        contentDescription = textFermer,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
 
-            // Même séparateur horizontal net que TB
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 1.dp)
 
-            // CORPS : Contenu dynamique avec des lignes colorées
             when {
                 loading -> {
                     Box(
@@ -88,7 +126,7 @@ fun StationVBubble(
                 }
                 detail == null -> {
                     Text(
-                        text = "Informations indisponibles",
+                        text = textIndisponible,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
@@ -98,51 +136,45 @@ fun StationVBubble(
                 else -> {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
 
-                        // État de la station (En service / Hors service)
                         val enService = detail.enService ?: true
                         InfoRow(
-                            label = "Statut",
-                            value = if (enService) "En service" else "Hors service",
+                            label = textStatutLabel,
+                            value = if (enService) textEnService else textHorsService,
                             valueColor = if (enService) Color(0xFF4CAF50) else Color(0xFFD32F2F)
                         )
 
-                        // Vélos disponibles (Gros indicateur s'il en reste)
                         val velos = detail.velosDisponibles ?: 0
                         InfoRow(
-                            label = "Vélos disponibles",
+                            label = textVelosDispo,
                             value = "$velos",
                             valueColor = if (velos > 0) Color(0xFF4CAF50) else Color(0xFFD32F2F),
                             isBold = true
                         )
 
-                        // Sous-détails des types de vélos si disponibles
                         if (velos > 0) {
                             detail.velosClassiques?.let {
-                                if (it > 0) InfoRow(label = "  • Classiques", value = "$it")
+                                if (it > 0) InfoRow(label = textClassiques, value = "$it")
                             }
                             detail.velosElectriques?.let {
-                                if (it > 0) InfoRow(label = "  • Électriques", value = "$it", valueColor = Color(0xFF1976D2))
+                                if (it > 0) InfoRow(label = textElectriques, value = "$it", valueColor = Color(0xFF1976D2))
                             }
                         }
 
-                        // Places libres
                         val places = detail.placesDisponibles ?: 0
                         InfoRow(
-                            label = "Places libres",
+                            label = textPlacesLibres,
                             value = "$places",
                             valueColor = if (places > 0) MaterialTheme.colorScheme.onSurface else Color(0xFFD32F2F)
                         )
 
-                        // Capacité totale
                         detail.capacite?.let {
-                            InfoRow(label = "Capacité totale", value = "$it")
+                            InfoRow(label = textCapacite, value = "$it")
                         }
 
-                        // Date de dernière mise à jour
                         detail.derniereMaj?.let {
                             InfoRow(
-                                label = "Mis à jour",
-                                value = formatLastReported(it),
+                                label = textMisAJour,
+                                value = formatLastReported(it, textIlYa, textMin, textHeureAbbrev, textSecondesAbbrev),
                                 valueColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                             )
                         }
@@ -179,15 +211,15 @@ private fun InfoRow(
     }
 }
 
-private fun formatLastReported(iso: String): String {
+private fun formatLastReported(iso: String, ilYa: String, min: String, h: String, s: String): String {
     return try {
         val instant = java.time.Instant.parse(iso)
         val now = java.time.Instant.now()
         val seconds = java.time.Duration.between(instant, now).seconds
         when {
-            seconds < 60 -> "il y a ${seconds}s"
-            seconds < 3600 -> "il y a ${seconds / 60} min"
-            else -> "il y a ${seconds / 3600} h"
+            seconds < 60 -> "$ilYa ${seconds}$s"
+            seconds < 3600 -> "$ilYa ${seconds / 60} $min"
+            else -> "$ilYa ${seconds / 3600} $h"
         }
     } catch (e: Exception) {
         iso

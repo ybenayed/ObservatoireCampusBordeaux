@@ -3,9 +3,11 @@ package com.ObservatoireCampus.mobile.ui.components.layers.station
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DirectionsBus
 import androidx.compose.material.icons.filled.DirectionsBike
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import com.ObservatoireCampus.mobile.model.layers.LayerItemUiState
 import com.ObservatoireCampus.mobile.ui.components.layers.LayerSection
+import com.ObservatoireCampus.mobile.viewmodel.AppLanguage
+import com.ObservatoireCampus.mobile.viewmodel.LanguageViewModel
 
 @Composable
 fun StationTBDrawerSection(
@@ -14,10 +16,25 @@ fun StationTBDrawerSection(
     expanded: Boolean,
     onExpandToggle: () -> Unit,
     onMasterToggle: () -> Unit,
-    onItemToggle: (String) -> Unit
+    onItemToggle: (String) -> Unit,
+    languageViewModel: LanguageViewModel,
+    currentLanguage: AppLanguage
 ) {
+    var translatedTitle by remember { mutableStateOf("Bus & Tram") }
+    var translatedItemLabels by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+
+    LaunchedEffect(currentLanguage, items) {
+        translatedTitle = languageViewModel.translate("Bus & Tram")
+
+        // Correction : On résout les fonctions suspendues correctement à l'intérieur du LaunchedEffect
+        val newLabels = items.associate { item ->
+            item.key to StationTypeStyle.label(item.key, languageViewModel)
+        }
+        translatedItemLabels = newLabels
+    }
+
     LayerSection(
-        label = "Bus & Tram",
+        label = translatedTitle,
         icon = Icons.Default.DirectionsBus,
         items = items,
         masterActive = masterActive,
@@ -27,7 +44,7 @@ fun StationTBDrawerSection(
         onItemToggle = onItemToggle,
         itemColor = { StationTypeStyle.color(it) },
         itemIcon = { StationTypeStyle.icon(it) },
-        itemLabel = { StationTypeStyle.label(it) }
+        itemLabel = { key -> translatedItemLabels[key] ?: key }
     )
 }
 
@@ -38,10 +55,25 @@ fun StationVDrawerSection(
     expanded: Boolean,
     onExpandToggle: () -> Unit,
     onMasterToggle: () -> Unit,
-    onItemToggle: (String) -> Unit
+    onItemToggle: (String) -> Unit,
+    languageViewModel: LanguageViewModel,
+    currentLanguage: AppLanguage
 ) {
+    // Initialisation avec "Vélo" par défaut
+    var translatedTitle by remember { mutableStateOf("Vélo") } // <-- Correction de l'orthographe
+    var translatedItemLabels by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+
+    LaunchedEffect(currentLanguage, items) {
+        translatedTitle = languageViewModel.translate("Vélo") // <-- Envoi de "Vélo" pour traduction
+
+        val newLabels = items.associate { item ->
+            item.key to StationTypeStyle.label(item.key, languageViewModel)
+        }
+        translatedItemLabels = newLabels
+    }
+
     LayerSection(
-        label = "Velo",
+        label = translatedTitle,
         icon = Icons.Default.DirectionsBike,
         items = items,
         masterActive = masterActive,
@@ -51,6 +83,6 @@ fun StationVDrawerSection(
         onItemToggle = onItemToggle,
         itemColor = { StationTypeStyle.color(it) },
         itemIcon = { StationTypeStyle.icon(it) },
-        itemLabel = { StationTypeStyle.label(it) }
+        itemLabel = { key -> translatedItemLabels[key] ?: key }
     )
 }

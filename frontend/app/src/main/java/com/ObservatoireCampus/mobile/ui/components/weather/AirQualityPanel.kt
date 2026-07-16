@@ -16,11 +16,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -28,67 +24,90 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ObservatoireCampus.mobile.model.weather.AirQualityAtDto
+import com.ObservatoireCampus.mobile.viewmodel.AppLanguage
+import com.ObservatoireCampus.mobile.viewmodel.LanguageViewModel
 
 private data class PollutantInfo(
+    val id: String, // Identification pour traduction
     val label: String,
     val icon: String,
     val unit: String,
-    val explanation: String
+    val rawExplanation: String
 )
 
-// Icones "parlantes" : chacune evoque immediatement le polluant concerne.
 private val PM25_INFO = PollutantInfo(
+    id = "PM25",
     label = "PM2.5",
-    icon = "\uD83C\uDF2B\uFE0F", // brume / smog
+    icon = "\uD83C\uDF2B\uFE0F",
     unit = "µg/m³",
-    explanation = "Particules tres fines en suspension dans l'air, assez petites pour penetrer " +
-            "profondement dans les poumons et le sang. Elles proviennent surtout de la circulation, " +
-            "du chauffage et de l'industrie."
+    rawExplanation = "Particules très fines en suspension dans l'air, assez petites pour pénétrer profondément dans les poumons et le sang. Elles proviennent surtout de la circulation, du chauffage et de l'industrie."
 )
 
 private val PM10_INFO = PollutantInfo(
+    id = "PM10",
     label = "PM10",
-    icon = "\uD83D\uDCA8", // vent / poussiere en suspension
+    icon = "\uD83D\uDCA8",
     unit = "µg/m³",
-    explanation = "Particules en suspension plus grosses que les PM2.5. Elles irritent surtout " +
-            "les voies respiratoires superieures (nez, gorge)."
+    rawExplanation = "Particules en suspension plus grosses que les PM2.5. Elles irritent surtout les voies respiratoires supérieures (nez, gorge)."
 )
 
 private val OZONE_INFO = PollutantInfo(
+    id = "OZONE",
     label = "Ozone (O3)",
-    icon = "\u2600\uFE0F", // soleil, car l'ozone se forme sous l'effet des UV
+    icon = "\u2600\uFE0F",
     unit = "µg/m³",
-    explanation = "Gaz forme pres du sol sous l'effet du soleil, a partir d'autres polluants. " +
-            "Sa concentration est souvent plus elevee en ete et l'apres-midi, et il est irritant " +
-            "pour les voies respiratoires."
+    rawExplanation = "Gaz formé près du sol sous l'effet du soleil, à partir d'autres polluants. Sa concentration est souvent plus élevée en été et l'après-midi, et il est irritant pour les voies respiratoires."
 )
 
 private val NO2_INFO = PollutantInfo(
+    id = "NO2",
     label = "NO2",
-    icon = "\uD83D\uDE97", // voiture, source principale
+    icon = "\uD83D\uDE97",
     unit = "µg/m³",
-    explanation = "Dioxyde d'azote, emis principalement par le trafic routier et la combustion. " +
-            "Il peut aggraver l'asthme et les problemes respiratoires."
+    rawExplanation = "Dioxyde d'azote, émis principalement par le trafic routier et la combustion. Il peut aggraver l'asthme et les problèmes respiratoires."
 )
 
-/**
- * Panneau qualite de l'air, EN BAS de l'ecran Meteo.
- * - Par defaut (showHourly = false) : moyenne de la journee consultee (dailyData).
- * - Des qu'une heure est cliquee sur l'echelle horaire (showHourly = true) : valeurs
- *   de cette heure precise (hourData).
- * - Les polluants sont desormais affiches les uns AU-DESSUS des autres (une ligne par
- *   polluant), avec une icone parlante pour chacun. Un tap ouvre une explication.
- */
 @Composable
 fun AirQualityPanel(
     dailyData: AirQualityAtDto?,
     hourData: AirQualityAtDto?,
     showHourly: Boolean,
+    languageViewModel: LanguageViewModel, // <-- AJOUT
+    currentLanguage: AppLanguage,          // <-- AJOUT
     modifier: Modifier = Modifier
 ) {
     val data = if (showHourly) hourData else dailyData
     var infoDialog by remember { mutableStateOf<PollutantInfo?>(null) }
     var showCategoryInfo by remember { mutableStateOf(false) }
+
+    // États de traduction pour l'interface statique
+    var textHeaderHourly by remember { mutableStateOf("Qualité de l'air — à cette heure") }
+    var textHeaderDaily by remember { mutableStateOf("Qualité de l'air — moyenne du jour") }
+    var textUnavailable by remember { mutableStateOf("Donnée indisponible") }
+    var textDialogTitle by remember { mutableStateOf("Indice de qualité de l'air") }
+    var textDialogBody by remember { mutableStateOf("") }
+
+    // États traduits dynamiquement pour le dialogue de chaque polluant
+    var translatedExplanation by remember { mutableStateOf("") }
+
+    LaunchedEffect(currentLanguage) {
+        textHeaderHourly = languageViewModel.translate("Qualité de l'air — à cette heure")
+        textHeaderDaily = languageViewModel.translate("Qualité de l'air — moyenne du jour")
+        textUnavailable = languageViewModel.translate("Donnée indisponible")
+        textDialogTitle = languageViewModel.translate("Indice de qualité de l'air")
+        textDialogBody = languageViewModel.translate(
+            "Cet indice résume le niveau global de pollution de l'air à partir de " +
+                    "plusieurs polluants (PM2.5, PM10, ozone, NO2). Plus la catégorie est " +
+                    "élevée, plus il est recommandé de limiter les efforts physiques " +
+                    "prolongés en extérieur."
+        )
+    }
+
+    LaunchedEffect(currentLanguage, infoDialog) {
+        infoDialog?.let {
+            translatedExplanation = languageViewModel.translate(it.rawExplanation)
+        }
+    }
 
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -98,16 +117,23 @@ fun AirQualityPanel(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = if (showHourly) "Qualite de l'air — a cette heure" else "Qualite de l'air — moyenne du jour",
+                text = if (showHourly) textHeaderHourly else textHeaderDaily,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 15.sp
             )
             Spacer(modifier = Modifier.height(12.dp))
 
             if (data == null) {
-                Text(text = "Donnee indisponible", fontSize = 13.sp, color = Color.Gray)
+                Text(text = textUnavailable, fontSize = 13.sp, color = Color.Gray)
             } else {
-                // Categorie generale de l'indice (cliquable -> explication de l'indice)
+                var translatedCategory by remember { mutableStateOf(data.category ?: "") }
+                var translatedDesc by remember { mutableStateOf(data.description ?: "") }
+
+                LaunchedEffect(currentLanguage, data.category, data.description) {
+                    translatedCategory = data.category?.let { languageViewModel.translate(it) } ?: ""
+                    translatedDesc = data.description?.let { languageViewModel.translate(it) } ?: ""
+                }
+
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
@@ -121,8 +147,8 @@ fun AirQualityPanel(
                     Text(text = data.icon ?: "🌍", fontSize = 30.sp)
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
-                        Text(text = data.category ?: "Inconnu", fontWeight = FontWeight.Medium, fontSize = 15.sp)
-                        Text(text = data.description ?: "", fontSize = 12.sp, color = Color.Gray)
+                        Text(text = translatedCategory, fontWeight = FontWeight.Medium, fontSize = 15.sp)
+                        Text(text = translatedDesc, fontSize = 12.sp, color = Color.Gray)
                     }
                 }
 
@@ -135,7 +161,6 @@ fun AirQualityPanel(
                 val ozone = if (showHourly) data.ozone else data.ozoneAvg
                 val no2 = if (showHourly) data.nitrogenDioxide else data.nitrogenDioxideAvg
 
-                // Polluants empiles verticalement, une ligne par polluant
                 PollutantRow(PM25_INFO, pm25) { infoDialog = PM25_INFO }
                 Divider()
                 PollutantRow(PM10_INFO, pm10) { infoDialog = PM10_INFO }
@@ -152,7 +177,7 @@ fun AirQualityPanel(
             onDismissRequest = { infoDialog = null },
             confirmButton = { TextButton(onClick = { infoDialog = null }) { Text("OK") } },
             title = { Text("${info.icon}  ${info.label}") },
-            text = { Text(info.explanation) }
+            text = { Text(translatedExplanation) }
         )
     }
 
@@ -160,15 +185,8 @@ fun AirQualityPanel(
         AlertDialog(
             onDismissRequest = { showCategoryInfo = false },
             confirmButton = { TextButton(onClick = { showCategoryInfo = false }) { Text("OK") } },
-            title = { Text("Indice de qualite de l'air") },
-            text = {
-                Text(
-                    "Cet indice resume le niveau global de pollution de l'air a partir de " +
-                            "plusieurs polluants (PM2.5, PM10, ozone, NO2). Plus la categorie est " +
-                            "elevee, plus il est recommande de limiter les efforts physiques " +
-                            "prolonges en exterieur."
-                )
-            }
+            title = { Text(textDialogTitle) },
+            text = { Text(textDialogBody) }
         )
     }
 }
