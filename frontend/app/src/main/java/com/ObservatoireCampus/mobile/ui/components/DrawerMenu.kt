@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.ObservatoireCampus.mobile.model.layers.LayerItemUiState
 import com.ObservatoireCampus.mobile.ui.components.layers.freevehicle.FreeVehicleDrawerSection
@@ -25,14 +26,13 @@ import com.ObservatoireCampus.mobile.ui.components.layers.station.StationTerDraw
 import com.ObservatoireCampus.mobile.ui.theme.ObcampusPrimary
 import com.ObservatoireCampus.mobile.ui.theme.ObcampusSecondary
 import com.ObservatoireCampus.mobile.viewmodel.AppLanguage
-import com.ObservatoireCampus.mobile.viewmodel.LanguageViewModel // AJOUT
+import com.ObservatoireCampus.mobile.viewmodel.LanguageViewModel
 
 private data class DrawerOption(
-    val id: String, // Identification pour la logique interne
+    val id: String,
     val icon: ImageVector
 )
 
-// On utilise des ID stables au lieu de textes écrits en dur pour pouvoir les traduire à la volée
 private val drawerOptions = listOf(
     DrawerOption("bornes_electriques", Icons.Default.EvStation),
     DrawerOption("meteo", Icons.Default.Cloud)
@@ -40,7 +40,7 @@ private val drawerOptions = listOf(
 
 @Composable
 fun DrawerMenu(
-    languageViewModel: LanguageViewModel, // AJOUT de la gestion de langue
+    languageViewModel: LanguageViewModel,
     parkingLayers: List<LayerItemUiState>,
     parkingMasterActive: Boolean,
     parkingExpanded: Boolean,
@@ -75,6 +75,7 @@ fun DrawerMenu(
     isTranslating: Boolean,
     onLanguageSelected: (AppLanguage) -> Unit,
     onWeatherClick: () -> Unit = {},
+    onInternshipClick: () -> Unit = {}, // <-- Callback vers l'écran "À propos"
     onOptionClick: (String, Boolean) -> Unit = { _, _ -> },
     onBackToMap: () -> Unit = {},
     onLogout: () -> Unit = {}
@@ -83,7 +84,6 @@ fun DrawerMenu(
         mutableStateOf(drawerOptions.associate { it.id to false })
     }
 
-    // Traductions des textes statiques du Drawer
     var translatedBornesLabel by remember { mutableStateOf("Bornes électriques") }
     var translatedMeteoLabel by remember { mutableStateOf("Météo") }
     var translatedLogoutLabel by remember { mutableStateOf("Déconnexion") }
@@ -137,8 +137,8 @@ fun DrawerMenu(
                 onExpandToggle = onParkingExpandToggle,
                 onMasterToggle = onParkingMasterToggle,
                 onItemToggle = onParkingItemToggle,
-                languageViewModel = languageViewModel, // PASSAGE DE LA LANGUE
-                currentLanguage = currentLanguage      // PASSAGE DE LA LANGUE
+                languageViewModel = languageViewModel,
+                currentLanguage = currentLanguage
             )
 
             // BUS / TRAM
@@ -149,8 +149,8 @@ fun DrawerMenu(
                 onExpandToggle = onStationTBExpandToggle,
                 onMasterToggle = onStationTBMasterToggle,
                 onItemToggle = onStationTBItemToggle,
-                languageViewModel = languageViewModel, // PASSAGE DE LA LANGUE
-                currentLanguage = currentLanguage      // PASSAGE DE LA LANGUE
+                languageViewModel = languageViewModel,
+                currentLanguage = currentLanguage
             )
 
             // VELO
@@ -161,8 +161,8 @@ fun DrawerMenu(
                 onExpandToggle = onStationVExpandToggle,
                 onMasterToggle = onStationVMasterToggle,
                 onItemToggle = onStationVItemToggle,
-                languageViewModel = languageViewModel, // PASSAGE DE LA LANGUE
-                currentLanguage = currentLanguage      // PASSAGE DE LA LANGUE
+                languageViewModel = languageViewModel,
+                currentLanguage = currentLanguage
             )
 
             // TER
@@ -173,8 +173,8 @@ fun DrawerMenu(
                 onExpandToggle = onStationTerExpandToggle,
                 onMasterToggle = onStationTerMasterToggle,
                 onItemToggle = onStationTerItemToggle,
-                languageViewModel = languageViewModel, // PASSAGE DE LA LANGUE
-                currentLanguage = currentLanguage      // PASSAGE DE LA LANGUE
+                languageViewModel = languageViewModel,
+                currentLanguage = currentLanguage
             )
 
             // LIBRE-SERVICE
@@ -185,15 +185,13 @@ fun DrawerMenu(
                 onExpandToggle = onFreeVehicleExpandToggle,
                 onMasterToggle = onFreeVehicleMasterToggle,
                 onItemToggle = onFreeVehicleItemToggle,
-                languageViewModel = languageViewModel, // PASSAGE DE LA LANGUE
-                currentLanguage = currentLanguage      // PASSAGE DE LA LANGUE
+                languageViewModel = languageViewModel,
+                currentLanguage = currentLanguage
             )
 
-            // AUTRES OPTIONS - Statiques et Traduisibles
+            // AUTRES OPTIONS
             drawerOptions.forEach { option ->
                 val isActive = activeStates[option.id] == true
-
-                // Association de l'id d'option avec le label traduit
                 val labelText = if (option.id == "bornes_electriques") translatedBornesLabel else translatedMeteoLabel
 
                 Row(
@@ -263,7 +261,7 @@ fun DrawerMenu(
 
         // 1. SECTION LANGUE
         LanguageDrawerSection(
-            languageViewModel = languageViewModel, // <-- AJOUT de la transmission ici !
+            languageViewModel = languageViewModel,
             currentLanguage = currentLanguage,
             isTranslating = isTranslating,
             onLanguageSelected = onLanguageSelected
@@ -271,7 +269,16 @@ fun DrawerMenu(
 
         HorizontalDivider()
 
-        // 2. BOUTON DE DECONNEXION
+        // 2. BOUTON PROPRE ET ENCAPSULÉ "À PROPOS" (JUSTE AVANT LA DECONNEXION)
+        AboutDrawerSection(
+            languageViewModel = languageViewModel,
+            currentLanguage = currentLanguage,
+            onAboutClick = onInternshipClick
+        )
+
+        HorizontalDivider()
+
+        // 3. BOUTON DE DECONNEXION
         Row(
             modifier = Modifier
                 .fillMaxWidth()

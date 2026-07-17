@@ -9,33 +9,29 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.ObservatoireCampus.mobile.ui.screens.MapScreen
 import com.ObservatoireCampus.mobile.ui.screens.WeatherScreen
-import com.ObservatoireCampus.mobile.viewmodel.LanguageViewModel // <-- AJOUT
+import com.ObservatoireCampus.mobile.ui.screens.InternshipScreen // Import de l'écran d'informations de stage
+import com.ObservatoireCampus.mobile.viewmodel.LanguageViewModel
 
-/**
- * Point d'entree unique de la navigation. A appeler depuis MainActivity :
- *
- *   setContent {
- *       val languageViewModel: LanguageViewModel = viewModel()
- *       AppNavHost(languageViewModel = languageViewModel)
- *   }
- *
- * (remplace un eventuel appel direct a MapScreen()).
- */
 @Composable
 fun AppNavHost(
-    languageViewModel: LanguageViewModel, // <-- AJOUT du ViewModel de langue partagé
+    languageViewModel: LanguageViewModel,
     modifier: androidx.compose.ui.Modifier = androidx.compose.ui.Modifier
 ) {
     val navController = rememberNavController()
     NavHost(navController = navController, startDestination = Screen.Map.route) {
         composable(Screen.Map.route) {
             MapScreen(
-                languageViewModel = languageViewModel, // <-- AJOUT de la transmission de l'instance
+                languageViewModel = languageViewModel,
                 onWeatherClick = { lat, lon ->
                     navController.navigate(Screen.Weather.buildRoute(lat, lon))
+                },
+                onInternshipClick = {
+                    // Navigation directe vers l'écran "À propos"
+                    navController.navigate(Screen.Internship.route)
                 }
             )
         }
+
         composable(
             route = Screen.Weather.route,
             arguments = listOf(
@@ -54,13 +50,19 @@ fun AppNavHost(
             val lat = backStackEntry.arguments?.getString("lat")?.toDoubleOrNull()
             val lon = backStackEntry.arguments?.getString("lon")?.toDoubleOrNull()
 
-            // Si jamais WeatherScreen a lui aussi besoin des traductions,
-            // vous pourrez lui passer `languageViewModel` de la même manière ici.
             WeatherScreen(
                 languageViewModel = languageViewModel,
                 onBack = { navController.popBackStack() },
                 userLat = lat,
                 userLon = lon
+            )
+        }
+
+        // AJOUT : Écran "À propos" (InternshipScreen)
+        composable(Screen.Internship.route) {
+            InternshipScreen(
+                languageViewModel = languageViewModel,
+                onBack = { navController.popBackStack() } // Retourne à la carte
             )
         }
     }
