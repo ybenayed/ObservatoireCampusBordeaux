@@ -4,7 +4,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 object RetrofitClient {
-    private const val BASE_URL = "http://172.24.66.195:8080/"  // typo corrigee : http:// pas http:/
+    private const val BASE_URL = "http://10.110.167.195:8080/"  // typo corrigee : http:// pas http:/
 
     private val retrofit: Retrofit by lazy {
         Retrofit.Builder()
@@ -21,4 +21,6 @@ object RetrofitClient {
     val weatherApi: WeatherApi by lazy { retrofit.create(WeatherApi::class.java) }
     val airQualityApi: AirQualityApi by lazy { retrofit.create(AirQualityApi::class.java) }
     val stationTerApi: StationTerApi by lazy { retrofit.create(StationTerApi::class.java) }
+    val geocodingApi: GeocodingApi by lazy { retrofit.create(GeocodingApi::class.java) }
+
 }

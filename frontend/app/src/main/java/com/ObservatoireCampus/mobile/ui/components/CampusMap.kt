@@ -34,6 +34,9 @@ import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polygon
+import org.osmdroid.views.overlay.infowindow.InfoWindow
+import org.osmdroid.events.MapEventsReceiver
+import org.osmdroid.views.overlay.MapEventsOverlay
 
 /**
  * Carte OpenStreetMap. Dessine les polygones des campus reçus,
@@ -71,6 +74,19 @@ fun CampusMap(
     ) {
         val mapView = mapViewRef.value ?: return@LaunchedEffect
         mapView.overlays.clear()
+
+        // Ferme toute bulle ouverte (ex: résultat de recherche) quand on clique
+        // sur une zone vide de la carte. Ajouté en premier : les overlays ajoutés
+        // après (marqueurs, polygones) auront priorité pour intercepter leurs propres clics.
+        mapView.overlays.add(
+            MapEventsOverlay(object : MapEventsReceiver {
+                override fun singleTapConfirmedHelper(p: GeoPoint?): Boolean {
+                    InfoWindow.closeAllInfoWindowsOn(mapView)
+                    return false
+                }
+                override fun longPressHelper(p: GeoPoint?): Boolean = false
+            })
+        )
 
         // Redessine l'ensemble avec les nouveaux titres traduits
         if (showPolygons && campusList.isNotEmpty()) {

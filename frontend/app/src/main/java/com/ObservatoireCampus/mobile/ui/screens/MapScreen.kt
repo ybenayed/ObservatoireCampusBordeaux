@@ -61,6 +61,9 @@ import androidx.compose.runtime.getValue
 import com.ObservatoireCampus.mobile.model.station.StationVPositionDto
 import com.ObservatoireCampus.mobile.viewmodel.LanguageViewModel
 import com.ObservatoireCampus.mobile.viewmodel.AppLanguage
+import com.ObservatoireCampus.mobile.viewmodel.search.SearchViewModel
+import com.ObservatoireCampus.mobile.ui.components.search.SearchResultInfoWindow
+import com.ObservatoireCampus.mobile.ui.components.search.createSearchResultMarkerIcon
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -145,7 +148,13 @@ fun MapScreen(
     val currentLanguage by languageViewModel.currentLanguage.collectAsState()
     val isTranslating by languageViewModel.isTranslating.collectAsState()
     val languageError by languageViewModel.error.collectAsState()
+    //search
+    val searchViewModel: SearchViewModel = viewModel()
+    val searchQuery by searchViewModel.query.collectAsState()
+    val searchSuggestions by searchViewModel.suggestions.collectAsState()
 
+// 2. Déclarer une référence pour un marqueur de recherche
+    var searchMarker by remember { mutableStateOf<Marker?>(null) }
     // --- TRADUCTION DE LA LOCALISATION ET DES CAMPUS ---
     var displayedCampusList by remember { mutableStateOf(campusList) }
     var translatedUserLocationPinTitle by remember { mutableStateOf("Ma position") }
@@ -293,6 +302,46 @@ fun MapScreen(
 
             SearchBar(
                 languageViewModel = languageViewModel,
+                query = searchQuery,
+                suggestions = searchSuggestions,
+                onQueryChange = { searchViewModel.onQueryChanged(it) },
+                onSuggestionSelected = { selectedPlace ->
+                    val targetPoint = GeoPoint(selectedPlace.latitude, selectedPlace.longitude)
+
+                    // Déplacer la carte sur le lieu recherché
+                    mapView?.let { mp ->
+                        mp.controller.animateTo(targetPoint)
+                        mp.controller.setZoom(17.0)
+
+                        // Gérer le marqueur de recherche
+                        searchMarker?.let { mp.overlays.remove(it) } // On retire l'ancien si existant
+
+                        val newMarker = Marker(mp).apply {
+                            position = targetPoint
+                            title = selectedPlace.name
+                            snippet = selectedPlace.subtitle
+                            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                            icon = createSearchResultMarkerIcon(mp.context) // pin rouge simple
+                            infoWindow = SearchResultInfoWindow(mp) // bulle ancrée au marqueur
+                            setOnMarkerClickListener { clickedMarker, _ ->
+                                if (clickedMarker.isInfoWindowShown) {
+                                    clickedMarker.closeInfoWindow()
+                                } else {
+                                    org.osmdroid.views.overlay.infowindow.InfoWindow.closeAllInfoWindowsOn(mp)
+                                    clickedMarker.showInfoWindow()
+                                }
+                                true
+                            }
+                        }
+                        mp.overlays.add(newMarker)
+                        searchMarker = newMarker
+                        newMarker.showInfoWindow() // affichée directement après la sélection
+                        mp.invalidate()
+                    }
+
+                    // Vider la recherche pour fermer l'autocomplétion
+                    searchViewModel.onQueryChanged("")
+                },
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .padding(top = 64.dp)
